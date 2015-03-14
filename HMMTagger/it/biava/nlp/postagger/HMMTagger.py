@@ -61,7 +61,7 @@ def print_dptable(V):
 def loadCorpus(path):
     sentences = [{}]
 
-    lines = [line.strip() for line in open(path)]
+    lines = [line.strip() for line in open(path, encoding="utf8")]
     sentence = []
     for line in lines:
         if not line.strip():
@@ -104,8 +104,23 @@ def getCorpusTransitionProbability(corpus):
             prevTag = tag
 
     #return countTag, countTagStart, countTagCons
-    return countTag, countTagStart/sentences, countTagCons/countTag
+    probTagStart = countTagStart[:]
+    probTagStart[:] = [x / sentences for x in probTagStart]
+    #for item in probTagStart:
+    #    item=item/sentences
 
+    probTagCons = countTagCons[:]
+    probTagCons[:] = [[div(x,countTag[i]) for (i, x) in enumerate(r)] for (c,r) in enumerate(probTagCons)]
+    # for row in probTagCons:
+    #     i = 0
+    #     for item in countTagCons:
+    #         item/=countTag[i]
+    #         i+=1
+
+    return countTag, probTagStart, probTagCons
+
+def div(x, c):
+    return x / c if c!=0 else x/999999
 
 def tagIndex(tag):
     if tag == '.':
@@ -114,8 +129,20 @@ def tagIndex(tag):
         return PoSTags[tag].value - 1
 
 
-def getCorpusEmissionProbability(corpus, words):
-    return 0
+def getCorpusEmissionProbability(corpus, words, countTag):
+
+    # |words| rows x |tags| cols
+    countWordWithTag = [[0 for i in range(len(countTag))] for i in range(len(words))]
+    for sentence in corpus:
+        for tag in sentence:
+            # Word in corpus is in words
+            if tag[0] in words:
+                countWordWithTag[words.index(tag[0])][tagIndex(tag[1])]+=1
+
+    probWordWithTag = countWordWithTag[:]
+    probWordWithTag[:] = [[div(x,countTag[i]) for (i, x) in enumerate(r)] for (c,r) in enumerate(probWordWithTag)]
+
+    return probWordWithTag
 
 
 from enum import Enum
@@ -148,6 +175,30 @@ class PoSTags(Enum):
     X = 17
 
 
-corpusPath = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-dev.conll"
+#corpusPath = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-dev.conll"
+corpusPath = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
 corpus = loadCorpus(corpusPath)
-print(getCorpusTransitionProbability(corpus))
+#(countTag, probTagStart, probTagCons)= getCorpusTransitionProbability(corpus)
+
+import pickle
+
+# with open("tmp_corpus", 'wb') as f:
+#     pickle.dump(countTag, f)
+#     pickle.dump(probTagStart, f)
+#     pickle.dump(probTagCons, f)
+
+with open("tmp_corpus", 'rb') as f:
+    countTag=pickle.load(f)
+    probTagStart=pickle.load(f)
+    probTagCons=pickle.load(f)
+
+sentence = "Oggi è proprio una bella giornata !"
+words = sentence.split(" ")
+probEmission=getCorpusEmissionProbability(corpus, words, countTag)
+
+PoSTagList = [name for (name, member) in PoSTags.__members__.items()]
+w=[i for i in range(len(words))]
+t=[i for i in range(len(PoSTagList))]
+
+(prob, path)=viterbi(w,t, probTagStart, [list(x) for x in zip(*probTagCons)], [list(x) for x in zip(*probEmission)])
+print(path)
