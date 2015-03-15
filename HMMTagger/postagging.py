@@ -7,7 +7,7 @@ class PoSTagger:
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
-    def get_sentence_tags(self, sentence):
+    def get_sentence_tags(self, sentence=None, words=None):
         """Returns the tags associated with the words in the sentence"""
         pass
 
@@ -35,8 +35,9 @@ class MostFrequentTagger(PoSTagger):
         self.pos_tags = pos_tags
         self.corpus = corpus
 
-    def get_sentence_tags(self, sentence):
-        words = self.tokenize_sentence(sentence)
+    def get_sentence_tags(self, sentence=None, words=None):
+        if words is None:
+            words = self.tokenize_sentence(sentence)
 
         # freq[words x tags]
         freq = [[0 for i in range(len(self.pos_tags))] for i in range(len(words))]
@@ -157,8 +158,9 @@ class HMMTagger(PoSTagger):
 
         return probWordWithTag
 
-    def get_sentence_tags(self, sentence):
-        words = self.tokenize_sentence(sentence)
+    def get_sentence_tags(self, sentence=None, words=None):
+        if words is None:
+            words = self.tokenize_sentence(sentence)
 
         probEmission = self.getCorpusEmissionProbability(words)
 
@@ -196,7 +198,7 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     n = 0  # if only one element is observed max is sought in the initialization values
     if len(obs) != 1:
         n = t
-    print_dptable(V)
+    #print_dptable(V)
     (prob, state) = max((V[n][y], y) for y in states)
     return (prob, path[state])
 
