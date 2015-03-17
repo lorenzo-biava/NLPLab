@@ -63,6 +63,7 @@ import os.path
 import base64
 import hashlib
 
+
 class HMMTagger(PoSTagger):
     def __init__(self, corpus, pos_tags, corpus_digest=None):
         self.pos_tags = pos_tags
@@ -123,16 +124,37 @@ class HMMTagger(PoSTagger):
         probTagCons = countTagCons[:]
         probTagCons[:] = [[self.div(x, countTag[i]) for (i, x) in enumerate(r)] for (c, r) in enumerate(probTagCons)]
         # for row in probTagCons:
-        #     i = 0
-        #     for item in countTagCons:
-        #         item/=countTag[i]
+        # i = 0
+        # for item in countTagCons:
+        # item/=countTag[i]
         #         i+=1
+
+        # smooth tag probabilities
+        s = (1 - sum(probTagStart)) / sum([(x == 0) for x in probTagStart])
+        probTagStart = [(x if x != 0 else s) for x in probTagStart]
 
         return countTag, probTagStart, probTagCons
 
     @staticmethod
     def div(x, c):
-        return x / c if c != 0 else x / 999999
+        # P(A|B) and P(B) = 0 makes no sense
+        # TODO: Check that out
+        if c == 0:
+            return 0
+
+        return x / c
+
+    @staticmethod
+    def div_smooth(x, c, pos_tags_len):
+        # P(A|B) and P(B) = 0 makes no sense
+        # TODO: Check that out
+        if c == 0:
+            return 0
+
+        #if x == 0:
+        #    return 1 / pos_tags_len
+
+        return x / c
 
     def tag_index(self, tag):
         if tag in self.pos_tags:
@@ -146,15 +168,26 @@ class HMMTagger(PoSTagger):
 
         # |words| rows x |tags| cols
         countWordWithTag = [[0 for i in range(len(self.countTag))] for i in range(len(words))]
+        words_count = [0 for i in range(len(words))]
         for sentence in self.corpus:
             for tag in sentence:
                 # Word in corpus is in words
                 if tag[0] in words:
-                    countWordWithTag[words.index(tag[0])][self.tag_index(tag[1])] += 1
+                    word_index = words.index(tag[0])
+                    words_count[word_index] += 1
+                    countWordWithTag[word_index][self.tag_index(tag[1])] += 1
 
         probWordWithTag = countWordWithTag[:]
-        probWordWithTag[:] = [[self.div(x, self.countTag[i]) for (i, x) in enumerate(r)] for (c, r) in
+        probWordWithTag[:] = [[self.div_smooth(x, self.countTag[i], len(self.pos_tags)) for (i, x) in enumerate(r)] for
+                              (c, r) in
                               enumerate(probWordWithTag)]
+
+        # smooth unknown words
+        i=0
+        for word in words_count:
+            if word==0:
+                probWordWithTag[i][:]=[1/len(self.pos_tags) for c in range(len(self.pos_tags))]
+            i+=1
 
         return probWordWithTag
 
@@ -164,10 +197,11 @@ class HMMTagger(PoSTagger):
 
         probEmission = self.getCorpusEmissionProbability(words)
 
-        w=[i for i in range(len(words))]
-        t=[i for i in range(len(self.pos_tags))]
+        w = [i for i in range(len(words))]
+        t = [i for i in range(len(self.pos_tags))]
 
-        (prob, tags) = viterbi(w, t, self.probTagStart, [list(x) for x in zip(*self.probTagCons)], [list(x) for x in zip(*probEmission)])
+        (prob, tags) = viterbi(w, t, self.probTagStart, [list(x) for x in zip(*self.probTagCons)],
+                               [list(x) for x in zip(*probEmission)])
 
         tag_values = [self.pos_tags[t] for t in tags]
 
@@ -198,7 +232,7 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     n = 0  # if only one element is observed max is sought in the initialization values
     if len(obs) != 1:
         n = t
-    #print_dptable(V)
+    # print_dptable(V)
     (prob, state) = max((V[n][y], y) for y in states)
     return (prob, path[state])
 

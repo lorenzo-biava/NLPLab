@@ -32,13 +32,19 @@ test_corpus, _ = load_corpus(test_corpus_path)
 
 hmm_tagger = HMMTagger(corpus, universal_treebank_pos_tags, corpus_digest)
 mf_tagger = MostFrequentTagger(corpus, universal_treebank_pos_tags)
-hmm_tags_count=0
-hmm_correct_tags_count=0
-mf_tags_count=0
-mf_correct_tags_count=0
+hmm_tags_count = 0
+hmm_correct_tags_count = 0
+mf_tags_count = 0
+mf_correct_tags_count = 0
 
+max_sentences = 100
+sentence_count = 0
 for sentence in test_corpus:
-    if len(sentence)>0:
+    sentence_count += 1
+    if sentence_count > max_sentences:
+        break
+
+    if len(sentence) > 0:
         corpus_tags, words = get_word_tag_list(sentence)
 
         (words, tags_index, hmm_tags) = hmm_tagger.get_sentence_tags(words=words)
@@ -46,19 +52,19 @@ for sentence in test_corpus:
                                                                   hmm_correct_tags_count)
 
         (words, tags_index, mf_tags) = mf_tagger.get_sentence_tags(words=words)
-        mf_tags_count, mf_correct_tags_count = compare_sentence(mf_tags, corpus_tags, mf_tags_count, mf_correct_tags_count)
+        mf_tags_count, mf_correct_tags_count = compare_sentence(mf_tags, corpus_tags, mf_tags_count,
+                                                                mf_correct_tags_count)
 
         print("HMMTagger:")
         print(hmm_tags)
         print("MostFreguentTagger:")
         print(mf_tags)
 
-
 print("HMMTagger:")
-print(hmm_correct_tags_count/hmm_tags_count)
+print(hmm_correct_tags_count / hmm_tags_count)
 
 print("MostFreguentTagger:")
-print(mf_correct_tags_count/mf_tags_count)
+print(mf_correct_tags_count / mf_tags_count)
 
 print("Total tags:")
 print(mf_tags_count)
