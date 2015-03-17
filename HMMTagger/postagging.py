@@ -65,6 +65,9 @@ import hashlib
 
 
 class HMMTagger(PoSTagger):
+    _opt_words_smoothing = 1
+    _opt_words_ignore_case = 0
+
     def __init__(self, corpus, pos_tags, corpus_digest=None):
         self.pos_tags = pos_tags
         self.corpus = corpus
@@ -84,6 +87,22 @@ class HMMTagger(PoSTagger):
                 pickle.dump(self.countTag, f)
                 pickle.dump(self.probTagStart, f)
                 pickle.dump(self.probTagCons, f)
+
+    @property
+    def opt_words_smoothing(self):
+        return self._opt_words_smoothing
+
+    @opt_words_smoothing.setter
+    def opt_words_smoothing(self, x):
+        self._opt_words_smoothing = x
+
+    @property
+    def opt_words_ignore_case(self):
+        return self._opt_words_ignore_case
+
+    @opt_words_ignore_case.setter
+    def opt_words_ignore_case(self, x):
+        self._opt_words_ignore_case = x
 
     def getCorpusTransitionProbability(self):
 
@@ -127,11 +146,11 @@ class HMMTagger(PoSTagger):
         # i = 0
         # for item in countTagCons:
         # item/=countTag[i]
-        #         i+=1
+        # i+=1
 
-        # smooth tag probabilities
-        s = (1 - sum(probTagStart)) / sum([(x == 0) for x in probTagStart])
-        probTagStart = [(x if x != 0 else s) for x in probTagStart]
+        # smooth tag probabilities (USELESS ?)
+        # s = (1 - sum(probTagStart)) / sum([(x == 0) for x in probTagStart])
+        # probTagStart = [(x if x != 0 else s) for x in probTagStart]
 
         return countTag, probTagStart, probTagCons
 
@@ -151,7 +170,7 @@ class HMMTagger(PoSTagger):
         if c == 0:
             return 0
 
-        #if x == 0:
+        # if x == 0:
         #    return 1 / pos_tags_len
 
         return x / c
@@ -166,6 +185,9 @@ class HMMTagger(PoSTagger):
 
     def getCorpusEmissionProbability(self, words):
 
+        if self._opt_words_ignore_case:
+            words = [x.lower() for x in words]
+
         # |words| rows x |tags| cols
         countWordWithTag = [[0 for i in range(len(self.countTag))] for i in range(len(words))]
         words_count = [0 for i in range(len(words))]
@@ -173,7 +195,11 @@ class HMMTagger(PoSTagger):
             for tag in sentence:
                 # Word in corpus is in words
                 if tag[0] in words:
-                    word_index = words.index(tag[0])
+                    if self._opt_words_ignore_case:
+                        word_index = words.index(tag[0].lower())
+                    else:
+                        word_index = words.index(tag[0])
+
                     words_count[word_index] += 1
                     countWordWithTag[word_index][self.tag_index(tag[1])] += 1
 
@@ -182,12 +208,13 @@ class HMMTagger(PoSTagger):
                               (c, r) in
                               enumerate(probWordWithTag)]
 
-        # smooth unknown words
-        i=0
-        for word in words_count:
-            if word==0:
-                probWordWithTag[i][:]=[1/len(self.pos_tags) for c in range(len(self.pos_tags))]
-            i+=1
+        # smooth unknown words (VERY IMPORTANT !!)
+        if self._opt_words_smoothing:
+            i = 0
+            for word in words_count:
+                if word == 0:
+                    probWordWithTag[i][:] = [1 / len(self.pos_tags) for c in range(len(self.pos_tags))]
+                i += 1
 
         return probWordWithTag
 

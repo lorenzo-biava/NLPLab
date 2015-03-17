@@ -14,12 +14,14 @@ def get_word_tag_list(sentence):
     return tags, words
 
 
-def compare_sentence(tags, test_tags, tags_count=0, correct_tags_count=0):
+def compare_sentence(tags, test_tags, bad_tags, tags_count=0, correct_tags_count=0):
     for tag in zip(tags, test_tags):
         tags_count += 1
         # Correct tags in tag[0], test_tags in tag[1]
         if tag[0][1] == tag[1][1]:
             correct_tags_count += 1
+        else:
+            bad_tags.append(tag)
 
     return tags_count, correct_tags_count
 
@@ -31,10 +33,14 @@ corpus, corpus_digest = load_corpus(corpus_path)
 test_corpus, _ = load_corpus(test_corpus_path)
 
 hmm_tagger = HMMTagger(corpus, universal_treebank_pos_tags, corpus_digest)
+hmm_tagger.opt_words_smoothing = 1
+hmm_tagger.opt_words_ignore_case = 0
 mf_tagger = MostFrequentTagger(corpus, universal_treebank_pos_tags)
 hmm_tags_count = 0
+hmm_bad_tags = []
 hmm_correct_tags_count = 0
 mf_tags_count = 0
+mf_bad_tags = []
 mf_correct_tags_count = 0
 
 max_sentences = 100
@@ -48,11 +54,11 @@ for sentence in test_corpus:
         corpus_tags, words = get_word_tag_list(sentence)
 
         (words, tags_index, hmm_tags) = hmm_tagger.get_sentence_tags(words=words)
-        hmm_tags_count, hmm_correct_tags_count = compare_sentence(hmm_tags, corpus_tags, hmm_tags_count,
+        hmm_tags_count, hmm_correct_tags_count = compare_sentence(hmm_tags, corpus_tags, hmm_bad_tags, hmm_tags_count,
                                                                   hmm_correct_tags_count)
 
         (words, tags_index, mf_tags) = mf_tagger.get_sentence_tags(words=words)
-        mf_tags_count, mf_correct_tags_count = compare_sentence(mf_tags, corpus_tags, mf_tags_count,
+        mf_tags_count, mf_correct_tags_count = compare_sentence(mf_tags, corpus_tags, mf_bad_tags, mf_tags_count,
                                                                 mf_correct_tags_count)
 
         print("HMMTagger:")
