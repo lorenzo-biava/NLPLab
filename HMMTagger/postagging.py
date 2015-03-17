@@ -24,20 +24,36 @@ class PoSTagger:
     @staticmethod
     def tag_index(tag, tags):
         if tag in tags:
-            return tags.index(tag)
-        else:
-            if tag in ('.', ','):
-                return tags.index('PUNCT')
+            return tags[tag]
+        else: # workaround for PUNCT character
+            #if tag in ('.', ','):
+            return tags['PUNCT']
 
 
 class MostFrequentTagger(PoSTagger):
+    _opt_words_ignore_case = 0
+
     def __init__(self, corpus, pos_tags):
         self.pos_tags = pos_tags
+        self.pos_tags_dict = dict([(v,i) for i,v in enumerate(pos_tags)])
         self.corpus = corpus
+
+    @property
+    def opt_words_ignore_case(self):
+        return self._opt_words_ignore_case
+
+    @opt_words_ignore_case.setter
+    def opt_words_ignore_case(self, x):
+        self._opt_words_ignore_case = x
 
     def get_sentence_tags(self, sentence=None, words=None):
         if words is None:
             words = self.tokenize_sentence(sentence)
+
+        if self._opt_words_ignore_case:
+            words = [x.lower() for x in words]
+
+        words_dict = dict([(v,i) for i,v in enumerate(words)])
 
         # freq[words x tags]
         freq = [[0 for i in range(len(self.pos_tags))] for i in range(len(words))]
@@ -45,8 +61,12 @@ class MostFrequentTagger(PoSTagger):
 
         for sentence in self.corpus:
             for tag in sentence:
-                if tag[0] in words:
-                    freq[words.index(tag[0])][self.tag_index(tag[1], self.pos_tags)] += 1
+                if tag[0] in words_dict:
+                    if self._opt_words_ignore_case:
+                        word_index = words_dict[tag[0].lower()]
+                    else:
+                        word_index = words_dict[tag[0]]
+                    freq[word_index][self.tag_index(tag[1], self.pos_tags_dict)] += 1
 
         i = 0
         for word_row in freq:
@@ -60,8 +80,6 @@ class MostFrequentTagger(PoSTagger):
 
 import pickle
 import os.path
-import base64
-import hashlib
 
 
 class HMMTagger(PoSTagger):
@@ -70,7 +88,9 @@ class HMMTagger(PoSTagger):
 
     def __init__(self, corpus, pos_tags, corpus_digest=None):
         self.pos_tags = pos_tags
+        self.pos_tags_dict = dict([(v,i) for i,v in enumerate(pos_tags)])
         self.corpus = corpus
+
         if corpus_digest is not None:
             corpus_cache_file = "tmp_corpus_" + corpus_digest
 
@@ -171,16 +191,16 @@ class HMMTagger(PoSTagger):
             return 0
 
         # if x == 0:
-        #    return 1 / pos_tags_len
+        # return 1 / pos_tags_len
 
         return x / c
 
-    def tag_index(self, tag):
-        if tag in self.pos_tags:
-            return self.pos_tags.index(tag)
-        else:
-            if tag in ('.', ','):
-                return self.pos_tags.index('PUNCT')
+    # def tag_index(self, tag):
+    #     if tag in self.pos_tags:
+    #         return self.pos_tags.index(tag)
+    #     else:
+    #         if tag in ('.', ','):
+    #             return self.pos_tags.index('PUNCT')
 
 
     def getCorpusEmissionProbability(self, words):
@@ -188,20 +208,22 @@ class HMMTagger(PoSTagger):
         if self._opt_words_ignore_case:
             words = [x.lower() for x in words]
 
+        words_dict = dict([(v,i) for i,v in enumerate(words)])
+
         # |words| rows x |tags| cols
         countWordWithTag = [[0 for i in range(len(self.countTag))] for i in range(len(words))]
         words_count = [0 for i in range(len(words))]
         for sentence in self.corpus:
             for tag in sentence:
                 # Word in corpus is in words
-                if tag[0] in words:
+                if tag[0] in words_dict:
                     if self._opt_words_ignore_case:
-                        word_index = words.index(tag[0].lower())
+                        word_index = words_dict[tag[0].lower()]
                     else:
-                        word_index = words.index(tag[0])
+                        word_index = words_dict[tag[0]]
 
                     words_count[word_index] += 1
-                    countWordWithTag[word_index][self.tag_index(tag[1])] += 1
+                    countWordWithTag[word_index][self.tag_index(tag[1], self.pos_tags_dict)] += 1
 
         probWordWithTag = countWordWithTag[:]
         probWordWithTag[:] = [[self.div_smooth(x, self.countTag[i], len(self.pos_tags)) for (i, x) in enumerate(r)] for
