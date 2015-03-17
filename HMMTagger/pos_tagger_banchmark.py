@@ -5,6 +5,7 @@ from postaggingutils import universal_treebank_pos_tags, load_corpus
 import multiprocessing, time
 import sys
 
+
 def get_word_tag_list(sentence):
     tags = []
     words = []
@@ -48,7 +49,7 @@ mf_correct_tags_count = 0
 # max_sentences = sys.maxsize
 # sentence_count = 0
 # for sentence in test_corpus:
-#     sentence_count += 1
+# sentence_count += 1
 #     if sentence_count > max_sentences:
 #         break
 #
@@ -68,14 +69,13 @@ mf_correct_tags_count = 0
 #         print("MostFreguentTagger:")
 #         print(mf_tags)
 
-def tagger_benchmark(results, tagger_name, tagger, corpus):
-
+def tagger_benchmark(results, id, tagger_name, tagger, corpus):
     tags_count = 0
     bad_tags = []
     correct_tags_count = 0
 
     start_time = time.time()
-    PROGRESS_INTERVAL=5
+    PROGRESS_INTERVAL = 5
     sentence_count = 0
     corpus_len = len(corpus)
     for sentence in corpus:
@@ -84,27 +84,30 @@ def tagger_benchmark(results, tagger_name, tagger, corpus):
             corpus_tags, words = get_word_tag_list(sentence)
 
             (words, tags_index, tags) = tagger.get_sentence_tags(words=words)
-            compare_sentence(tags, corpus_tags, bad_tags, tags_count,
-                                                                      correct_tags_count)
+            tags_count, correct_tags_count = compare_sentence(tags, corpus_tags, bad_tags, tags_count,
+                                                              correct_tags_count)
             results[tagger_name] = (tags_count, correct_tags_count, bad_tags)
-            if(time.time() - start_time>=PROGRESS_INTERVAL):
-                perc = (sentence_count/corpus_len)*100
-                print('{:s}: {:d}/{:d} ({:.0f}%)'.format(tagger_name,sentence_count,corpus_len,perc))
+            if (time.time() - start_time >= PROGRESS_INTERVAL):
+                perc = (sentence_count / corpus_len) * 100
+                print('{:s}: {:d}/{:d} ({:.0f}%)'.format(tagger_name, sentence_count, corpus_len, perc))
                 start_time = time.time()
-            #print(tagger_name+": "+sentence_count+"/"+corpus_len+" ("+strround((sentence_count/corpus_len)*100)+"%)")
-            #print(tags)
+                #print(tagger_name+": "+sentence_count+"/"+corpus_len+" ("+strround((sentence_count/corpus_len)*100)+"%)")
+                #print(tags)
 
-    results[tagger_name] = (tags_count, correct_tags_count, bad_tags)
+    print('{:s}: ENDED !'.format(tagger_name))
+    results[id] = (tags_count, correct_tags_count, bad_tags)
+
 
 if __name__ == '__main__':
-    results=dict([])
+    manager = multiprocessing.Manager()
+    results = manager.dict()
 
     start_time = time.time()
 
     hmm_label = "HMMTagger"
     mf_label = "MFTagger"
-    proc_hmm = multiprocessing.Process(target=tagger_benchmark, args=(results, hmm_label, hmm_tagger, corpus))
-    proc_mf = multiprocessing.Process(target=tagger_benchmark, args=(results, mf_label, mf_tagger, corpus))
+    proc_hmm = multiprocessing.Process(target=tagger_benchmark, args=(results, 0, hmm_label, hmm_tagger, test_corpus))
+    proc_mf = multiprocessing.Process(target=tagger_benchmark, args=(results, 1, mf_label, mf_tagger, test_corpus))
 
     proc_hmm.start()
     proc_mf.start()
@@ -112,19 +115,19 @@ if __name__ == '__main__':
     proc_hmm.join()
     proc_mf.join()
 
-
+    print(results.items())
     print("HMMTagger:")
-    hmm_correct_tags_count = results[hmm_label]["correct_tags_count"]
-    hmm_tags_count = results[hmm_label]["tags_count"]
+    hmm_correct_tags_count = results[0][1]
+    hmm_tags_count = results[0][0]
     print(hmm_correct_tags_count / hmm_tags_count)
 
     print("MostFreguentTagger:")
-    mf_correct_tags_count = results[mf_label]["correct_tags_count"]
-    mf_correct_tags_count = results[mf_label]["tags_count"]
+    mf_correct_tags_count = results[1][1]
+    mf_tags_count = results[1][0]
     print(mf_correct_tags_count / mf_tags_count)
 
     print("Total tags:")
     print(mf_tags_count)
 
     elapsed_time = time.time() - start_time
-    print("Total time: "+elapsed_time)
+    print("Total time: " + str(elapsed_time)+"s")
