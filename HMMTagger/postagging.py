@@ -83,10 +83,13 @@ class MostFrequentTagger(PoSTagger):
             # Get most frequent tag
             tags[i] = [k for k, v in word_entry.items() if v == max(word_entry.values())][0]
 
-            # Unknown words are defaulted to NOUN
+            # Unknown words are defaulted to NOUN or PROPN
             # TODO: Should check if such PoS exists
             if (word_entry[tags[i]] == 0):
-                tags[i] = 'NOUN'
+                if(word.isupper()):
+                    tags[i] = 'PROPN'
+                else:
+                    tags[i] = 'NOUN'
 
             i += 1
 
@@ -96,6 +99,11 @@ class MostFrequentTagger(PoSTagger):
         # Return the list of Words, the list of Tag indexes and a dictionary with (Word -> Tag)
         return words, tags_indexes, [list(a) for a in zip(words, tags)]
 
+    @staticmethod
+    def fromFile(path):
+        corpus, _ = postaggingutils.load_corpus(path)
+        corpus_tags = postaggingutils.get_corpus_tags(corpus)
+        return MostFrequentTagger(corpus, corpus_tags)
 
 import pickle
 import os.path
