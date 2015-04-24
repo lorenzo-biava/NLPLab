@@ -2,6 +2,7 @@ package it.unito.nlplap.semantics.rdf;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -12,6 +13,7 @@ import com.hp.hpl.jena.vocabulary.DC;
 public class Main {
 
 	public static final String DOCS_DIR = "data/news_collection";
+	public static final String RDF_FILE = "data/news_collection.rdf";
 
 	public static class DocFeatures {
 		private String uri, title, subject, description, date, creator,
@@ -85,9 +87,16 @@ public class Main {
 		Model model = ModelFactory.createDefaultModel();
 
 		File[] docs = new File(DOCS_DIR).listFiles();
+
+		int anakinCreator = 2;
 		for (File doc : docs) {
 			// Extracting features
 			DocFeatures docFeatures = extractDocFeatures(doc);
+
+			if (anakinCreator > 0) {
+				docFeatures.setCreator("Anakin Skywalker");
+				anakinCreator--;
+			}
 
 			// create the resource
 			// and add the properties cascading style
@@ -103,6 +112,7 @@ public class Main {
 		}
 
 		model.write(System.out);
+		model.write(new FileOutputStream(new File(RDF_FILE)));
 	}
 
 	public static DocFeatures extractDocFeatures(File doc)
@@ -131,11 +141,7 @@ public class Main {
 
 		docFeatures.setSubject("");
 		docFeatures.setPublisher("BBC");
-		
-		if (new Random().nextInt(100) < 20)
-			docFeatures.setCreator("Anakin Skywalker");
-		else
-			docFeatures.setCreator("Lorenzo Biava");
+		docFeatures.setCreator("Lorenzo Biava");
 
 		sc.close();
 
