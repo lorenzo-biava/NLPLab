@@ -6,7 +6,7 @@
     <dc:creator>Anakin Skywalker</dc:creator>
     <dc:date>Page last updated at 07:32 GMT, Monday, 26 April 2010 08:32 UK</dc:date>
     <dc:description>The Irish Republic's biggest lender said it would raise up to 1.9bn euros through a rights issue.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>the,irish,Republic</dc:subject>
     <dc:title>Bank of Ireland to raise 3.4bn euros.</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/technology/8643844.stm">
@@ -14,7 +14,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at 13:34 GMT, Monday, 26 April 2010 14:34 UK</dc:date>
     <dc:description>Sony has signalled what could be the final end of the venerable floppy disk.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>Sony,signal,final</dc:subject>
     <dc:title>Sony to stop selling floppy disks from 2011.</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/entertainment/arts_and_culture/8644533.stm">
@@ -22,7 +22,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at 13:42 GMT, Monday, 26 April 2010 14:42 UK</dc:date>
     <dc:description>Some of the UK's most esteemed artists are to be showcased at the latest British Art Show - the survey of contemporary art held every five years.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>some,UK,esteem</dc:subject>
     <dc:title>British Art Show's contemporary talent revealed</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/entertainment/8639142.stm">
@@ -30,7 +30,7 @@
     <dc:creator>Anakin Skywalker</dc:creator>
     <dc:date>Page last updated at 08:24 GMT, Friday, 23 April 2010 09:24 UK</dc:date>
     <dc:description>Pixar's 2001 film Monsters Inc - about monsters who scare kids for a living - is to have a sequel, the Disney studio has announced.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>Pixar,film,Monsters</dc:subject>
     <dc:title>Disney announces Monsters Inc sequel</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/technology/8636985.stm">
@@ -38,7 +38,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at 10:52 GMT, Thursday, 22 April 2010 11:52 UK</dc:date>
     <dc:description>Thousands of PCs around the world have been paralysed by a security update that wrongly labelled part of Windows as a virus.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>thousand,pc,paralyse</dc:subject>
     <dc:title>Security update hits Windows PCs.</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/business/8638222.stm">
@@ -46,7 +46,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at 08:32 GMT, Monday, 26 April 2010 09:32 UK</dc:date>
     <dc:description>It may not have California's weather, ocean views or coffee culture, but a Moscow suburb will be the site of Russia's version of Silicon Valley.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>it,California,weather</dc:subject>
     <dc:title>Russia creates its own Silicon Valley.</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://news.bbc.co.uk/2/hi/entertainment/8643539.stm">
@@ -54,7 +54,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at 08:34 GMT, Monday, 26 April 2010 09:34 UK</dc:date>
     <dc:description>Avatar has become the fastest-selling home entertainment release of all time in North America, shifting 6.7 million DVDs and Blu-rays in four days.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>Avatar,fastest,selling</dc:subject>
     <dc:title>Avatar breaks US DVD sales record</dc:title>
   </rdf:Description>
   <rdf:Description rdf:about="http://www.bbc.com/news/science-environment-26786142">
@@ -62,7 +62,7 @@
     <dc:creator>Lorenzo Biava</dc:creator>
     <dc:date>Page last updated at Thu Apr  3 22:05:36 CEST 2014</dc:date>
     <dc:description>Sharks have patrolled the oceans for at least 400 million years and evolved into a huge range of remarkable species.</dc:description>
-    <dc:subject></dc:subject>
+    <dc:subject>shark,patrol,ocean</dc:subject>
     <dc:title>Can science stop sharks attacking humans?</dc:title>
   </rdf:Description>
 </rdf:RDF>

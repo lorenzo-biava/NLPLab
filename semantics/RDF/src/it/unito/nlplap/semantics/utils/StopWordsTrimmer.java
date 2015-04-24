@@ -14,7 +14,8 @@ public class StopWordsTrimmer {
 	public static final String DEAFULT_DATASET_FILE = "data/stop_words_FULL.txt";
 
 	public static String normalize(String text) {
-		return text.replaceAll("[^A-Za-z0-9 ]", "");
+		//return text.replaceAll("[^A-Za-z0-9 ]", " ");
+		return text.replaceAll("[^A-Za-z ]", " ");
 	}
 
 	public static List<String> tokenize(String text) {

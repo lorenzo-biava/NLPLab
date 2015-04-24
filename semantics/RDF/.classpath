@@ -16,8 +16,5 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="libs/WordNetRiTa/core.jar"/>
-	<classpathentry kind="lib" path="libs/WordNetRiTa/ritaWN.jar"/>
-	<classpathentry kind="lib" path="libs/WordNetRiTa/supportWN.jar"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>

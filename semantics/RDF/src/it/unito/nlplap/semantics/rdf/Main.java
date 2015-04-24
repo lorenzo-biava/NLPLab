@@ -11,6 +11,8 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.vocabulary.DC;
 
+import edu.stanford.nlp.util.StringUtils;
+
 public class Main {
 
 	public static final String DOCS_DIR = "data/news_collection";
@@ -145,7 +147,8 @@ public class Main {
 
 		List<String> feat = FeatureVectorUtils.getFeatureVector(contentBuilder
 				.toString());
-		docFeatures.setSubject("");
+		docFeatures.setSubject(StringUtils.join(
+				feat.subList(0, Math.min(3, feat.size())), ","));
 		docFeatures.setPublisher("BBC");
 		docFeatures.setCreator("Lorenzo Biava");
 
