@@ -1,9 +1,10 @@
 package it.unito.nlplap.semantics.rdf;
 
+import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
+
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.util.Random;
+import java.util.List;
 import java.util.Scanner;
 
 import com.hp.hpl.jena.rdf.model.Model;
@@ -77,11 +78,11 @@ public class Main {
 
 	}
 
-	public static void main(String[] args) throws FileNotFoundException {
+	public static void main(String[] args) throws Exception {
 		start();
 	}
 
-	public static void start() throws FileNotFoundException {
+	public static void start() throws Exception {
 
 		// create an empty Model
 		Model model = ModelFactory.createDefaultModel();
@@ -115,12 +116,12 @@ public class Main {
 		model.write(new FileOutputStream(new File(RDF_FILE)));
 	}
 
-	public static DocFeatures extractDocFeatures(File doc)
-			throws FileNotFoundException {
+	public static DocFeatures extractDocFeatures(File doc) throws Exception {
 		DocFeatures docFeatures = new DocFeatures();
 
 		Scanner sc = new Scanner(doc);
 		int lineN = 0;
+		StringBuilder contentBuilder = new StringBuilder();
 
 		while (sc.hasNextLine()) {
 			String line = sc.nextLine();
@@ -135,10 +136,15 @@ public class Main {
 			if (lineN == 7)
 				docFeatures.setDescription(line);
 
+			if (lineN >= 7 && !line.contains("Page last updated"))
+				contentBuilder.append(line);
+
 			if (line.contains("Page last updated"))
 				docFeatures.setDate(line);
 		}
 
+		List<String> feat = FeatureVectorUtils.getFeatureVector(contentBuilder
+				.toString());
 		docFeatures.setSubject("");
 		docFeatures.setPublisher("BBC");
 		docFeatures.setCreator("Lorenzo Biava");
