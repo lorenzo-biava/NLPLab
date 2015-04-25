@@ -25,7 +25,7 @@ public class SPARQLQuerySample {
 		Model model = ModelFactory.createDefaultModel();
 
 		// read the RDF/XML file
-		model.read(new FileInputStream(new File(Main.RDF_FILE)), null);
+		model.read(new FileInputStream(new File(RDFPopulatorSample.RDF_FILE)), null);
 
 		String author = "Anakin Skywalker";
 		searchByAuthor(model, author);
