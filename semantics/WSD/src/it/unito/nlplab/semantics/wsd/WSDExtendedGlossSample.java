@@ -10,6 +10,7 @@ import it.uniroma1.lcl.jlt.util.Language;
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,20 +28,42 @@ public class WSDExtendedGlossSample {
 
 	public static void main(String[] args) throws Exception {
 
-		String word = "pianta";
-		String context = "La pianta dell'alloggio è disponibile in ufficio, accanto all'appartamento; dal disegno è possibile cogliere i dettagli dell'architettura dello stabile, sulla distribuzione dei vani e la disposizione di porte e finestre.";
+		String wordA = "pianta";
+		List<String> contextsA = Arrays
+				.asList(new String[] {
+						"La pianta dell'alloggio è disponibile in ufficio, accanto all'appartamento; dal disegno è possibile cogliere i dettagli dell'architettura dello stabile, sulla distribuzione dei vani e la disposizione di porte e finestre.",
+						"I platani sono piante ad alto fusto, organismi viventi: non ha senso toglierli per fare posto a un parcheggio.",
+						"Non riesce ad appoggiare pianta del piede perché ha un profondo taglio vicino all'alluce." });
+
+		String wordB = "testa";
+		List<String> contextsB = Arrays
+				.asList(new String[] {
+						"Si tratta di un uomo facilmente riconoscibile: ha una testa piccola, gli occhi sporgenti, naso adunco e piccole orecchie a sventola.",
+						"Come per tutte le cose, ci vorrebbe un po' di testa, una punta di cervello, per non prendere decisioni fuori dal senso dell’intelletto.",
+						"La testa della struttura di parsing è l’elemento che corrisponde al sintagma più alto dell’albero." });
+
+		String word = wordA;
+		List<String> contexts = contextsA;
 
 		String pos = RiTa.getPosTags(word, true)[0];
 
-		System.out.println(String.format(
-				"Best sense for word '%s' in context '%s':\n\t%s", word,
-				context,
-				getBestSenseWithExtendedLeskAlgorithm(word, context, pos)));
+		List<ExtendedSense> senses = getExtendedSenses(word, pos);
+
+		for (String context : contexts) {
+
+			System.out
+					.println(String
+							.format("\nBest sense for word '%s' in context '%s':\n\t%s\n\n",
+									word,
+									context,
+									getBestSenseWithExtendedLeskAlgorithm(word,
+											context, senses)));
+		}
 	}
 
 	private static ExtendedSense getBestSenseWithExtendedLeskAlgorithm(
-			String searchWord, String context, String pos) throws Exception {
-		List<ExtendedSense> senses = getExtendedSenses(searchWord, pos);
+			String searchWord, String context, List<ExtendedSense> senses)
+			throws Exception {
 
 		int maxOverlap = 0;
 		ExtendedSense bestSense = null;
@@ -49,8 +72,8 @@ public class WSDExtendedGlossSample {
 					FeatureVectorUtils.getLemmas(context));
 
 			LOG.info(String
-					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, pos=%s, overlap=%d, sense=%s",
-							searchWord, pos, overlap, sense));
+					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, overlap=%d, sense=%s",
+							searchWord, overlap, sense));
 
 			if (overlap > maxOverlap) {
 				maxOverlap = overlap;
