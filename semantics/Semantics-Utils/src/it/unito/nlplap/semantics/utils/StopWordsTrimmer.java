@@ -20,7 +20,7 @@ public class StopWordsTrimmer {
 	 */
 	public static String normalize(String text) {
 		//return text.replaceAll("[^A-Za-z0-9 ]", " ");
-		return text.replaceAll("[^A-Za-z ]", " ");
+		return text.replaceAll("[^A-Za-z ]", " ").toLowerCase();
 	}
 
 	/**

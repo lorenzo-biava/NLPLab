@@ -2,6 +2,7 @@ package it.unito.nlplab.semantics.wsd;
 
 import it.uniroma1.lcl.babelnet.BabelNet;
 import it.uniroma1.lcl.babelnet.BabelSynset;
+import it.uniroma1.lcl.babelnet.data.BabelCategory;
 import it.uniroma1.lcl.babelnet.data.BabelExample;
 import it.uniroma1.lcl.babelnet.data.BabelGloss;
 import it.uniroma1.lcl.babelnet.data.BabelPOS;
@@ -17,6 +18,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import rita.RiTa;
+import edu.stanford.nlp.util.StringUtils;
 
 public class WSDExtendedGlossSample {
 
@@ -29,7 +31,7 @@ public class WSDExtendedGlossSample {
 		String context = "La pianta dell'alloggio è disponibile in ufficio, accanto all'appartamento; dal disegno è possibile cogliere i dettagli dell'architettura dello stabile, sulla distribuzione dei vani e la disposizione di porte e finestre.";
 
 		String pos = RiTa.getPosTags(word, true)[0];
-		
+
 		System.out.println(String.format(
 				"Best sense for word '%s' in context '%s':\n\t%s", word,
 				context,
@@ -66,30 +68,36 @@ public class WSDExtendedGlossSample {
 		Map<String, String> senseWords = new HashMap<String, String>();
 
 		for (String gloss : sense.getGlosses()) {
-			senseWords.clear();
+			// senseWords.clear();
 			for (String senseWord : FeatureVectorUtils.getLemmas(gloss)) {
 				senseWords.put(senseWord, null);
 			}
-			overlap += getOverlap(contextLemmas, senseWords);
+			// overlap += getOverlap(contextLemmas, senseWords);
 		}
 
-		senseWords.clear();
+		// senseWords.clear();
 		for (String example : sense.getExamples()) {
 			for (String exampleWord : FeatureVectorUtils.getLemmas(example)) {
 				senseWords.put(exampleWord, null);
 			}
 		}
-		overlap += getOverlap(contextLemmas, senseWords);
+		// overlap += getOverlap(contextLemmas, senseWords);
 
 		for (Sense rs : sense.getRelatedSenses()) {
 			for (String example : rs.getExamples()) {
-				senseWords.clear();
+				// senseWords.clear();
 				for (String exampleWord : FeatureVectorUtils.getLemmas(example)) {
 					senseWords.put(exampleWord, null);
 				}
-				overlap += getOverlap(contextLemmas, senseWords);
+				// overlap += getOverlap(contextLemmas, senseWords);
 			}
 		}
+
+		overlap = getOverlap(contextLemmas, senseWords);
+		LOG.info(String.format(
+				"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
+				overlap, StringUtils.join(contextLemmas, ", "),
+				StringUtils.join(senseWords.keySet(), ", ")));
 
 		return overlap;
 	}
@@ -133,10 +141,17 @@ public class WSDExtendedGlossSample {
 
 		for (BabelSynset bsynset : bySynsets) {
 			ExtendedSense sense = new ExtendedSense();
+			sense.setId(bsynset.getId().getID());
+			sense.setName(bsynset.getMainSense());
 			sense.setGlosses(extractGlossesFromBabelSynset(bsynset));
 
 			sense.setExamples(extractExamplesFromBabelSynset(bsynset));
 
+			sense.getExamples().add(
+					"_: "
+							+ StringUtils.join(
+									extractCategoriesFromBabelSynset(bsynset),
+									", "));
 			// List<Sense> rss = new ArrayList<Sense>();
 			// for (BabelSynsetIDRelation brel : bsynset.getEdges()) {
 			// Sense rs = new Sense();
@@ -152,6 +167,14 @@ public class WSDExtendedGlossSample {
 			senses.add(sense);
 		}
 		return senses;
+	}
+
+	private static List<String> extractCategoriesFromBabelSynset(
+			BabelSynset synset) {
+		List<String> examples = new ArrayList<String>();
+		for (BabelCategory bexample : synset.getCategories(Language.IT))
+			examples.add(bexample.getCategory());
+		return examples;
 	}
 
 	private static List<String> extractExamplesFromBabelSynset(

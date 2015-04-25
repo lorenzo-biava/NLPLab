@@ -18,9 +18,10 @@ public class ExtendedSense extends Sense {
 
 	@Override
 	public String toString() {
-		return String.format(
-				"ExtendedSense[gloss=%s, examples=[%s], relatedSenses=[%s]]",
-				getGloss(), StringUtils.join(getExamples(), ", "),
-				StringUtils.join(relatedSenses, ", "));
+		return String
+				.format("ExtendedSense[id=%s, name=%s, glosses=[%s], examples=[%s], relatedSenses=[%s]]",
+						getId(), getName(), getGloss(),
+						StringUtils.join(getExamples(), ", "),
+						StringUtils.join(relatedSenses, ", "));
 	}
 }

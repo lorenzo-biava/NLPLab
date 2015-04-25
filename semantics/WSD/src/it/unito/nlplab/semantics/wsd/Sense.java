@@ -6,8 +6,26 @@ import java.util.List;
 import edu.stanford.nlp.util.StringUtils;
 
 public class Sense {
+	private String name;
+	private String id;
 	private List<String> glosses = new ArrayList<String>();
 	private List<String> examples = new ArrayList<String>();
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public String getId() {
+		return id;
+	}
+
+	public void setId(String id) {
+		this.id = id;
+	}
 
 	public String getGloss() {
 		if (this.glosses == null || this.glosses.size() < 1)
@@ -39,7 +57,7 @@ public class Sense {
 
 	@Override
 	public String toString() {
-		return String.format("Sense[glosses=%s, examples=%s]",
+		return String.format("Sense[id=%s, name=%s, glosses=%s, examples=%s]",id, name,
 				StringUtils.join(glosses, ", "),
 				StringUtils.join(examples, ", "));
 	}
