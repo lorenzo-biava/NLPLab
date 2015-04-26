@@ -1,7 +1,7 @@
 __author__ = 'BLN'
 
-from postagging import MostFrequentTagger, HMMTagger
-import postaggingutils
+from pos_tagging import MostFrequentTagger, HMMTagger
+import pos_tagging_utils
 import multiprocessing, time
 import sys
 
@@ -30,18 +30,18 @@ def compare_sentence(tags, test_tags, bad_tags, tags_count=0, correct_tags_count
     return tags_count, correct_tags_count
 
 
-corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
-test_corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
-# corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
-#test_corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
+#corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
+#test_corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
+corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
+test_corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
 
-corpus, corpus_digest = postaggingutils.load_corpus(corpus_path)
+corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path)
 
 # IMPORTANT NOTE: Accuracy may vary depending by PoS tags order !
-# corpus_tags = postaggingutils.get_corpus_tags(corpus)
-corpus_tags = postaggingutils.universal_treebank_pos_tags
+#corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
 
-test_corpus, _ = postaggingutils.load_corpus(test_corpus_path)
+test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)
 
 hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
 hmm_tagger.opt_words_smoothing = 1

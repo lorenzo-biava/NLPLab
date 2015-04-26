@@ -101,13 +101,13 @@ class MostFrequentTagger(PoSTagger):
 
     @staticmethod
     def fromFile(path):
-        corpus, _ = postaggingutils.load_corpus(path)
-        corpus_tags = postaggingutils.get_corpus_tags(corpus)
+        corpus, _ = pos_tagging_utils.load_corpus(path)
+        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
         return MostFrequentTagger(corpus, corpus_tags)
 
 import pickle
 import os.path
-import postaggingutils
+import pos_tagging_utils
 
 
 class HMMTagger(PoSTagger):

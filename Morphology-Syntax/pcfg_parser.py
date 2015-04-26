@@ -2,7 +2,7 @@ __author__ = 'bln'
 
 from nltk import Tree, PCFG
 import logging
-from postagging import MostFrequentTagger
+from pos_tagging import MostFrequentTagger
 
 
 def convert_to_universal_tags(text):
@@ -20,6 +20,8 @@ def convert_to_universal_tags(text):
         'PREP': 'ADP',
         # PRONOMI
         'PRO': 'PRON',
+        # NUMERI
+        'NUMR': 'NUM',
         # PUNCT
         'PUNCT': '.'
     }
@@ -92,7 +94,7 @@ class PCFGViterbiParser(nltk.ViterbiParser):
         tokens = self._preprocess(list(tokens))
 
         # MUST BE CHANGED !
-        #tagged = nltk.pos_tag(tokens)
+        # tagged = nltk.pos_tag(tokens)
         _, _, tagged = MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll").get_sentence_tags(words=tokens)
         tagged = [tuple(row) for row in tagged]
         logging.debug(tagged)
@@ -107,22 +109,3 @@ class PCFGViterbiParser(nltk.ViterbiParser):
             self._grammar._calculate_indexes()
 
         return super(PCFGViterbiParser, self).parse(tokens)
-
-
-logging.basicConfig(level=logging.DEBUG)
-pcfg_training_set_path = "E:\\PROGETTI\\Dropbox\\UNIVERSITA'\\SisCog\\LAB\\Es2\\tut-clean-simple.penn.txt"
-
-viterbi_parser = PCFGViterbiParser.train(open(pcfg_training_set_path, 'r'), root='S')
-with open('it.pcfg', 'w') as outfile:
-    print(viterbi_parser.grammar().productions(), file=outfile)
-
-trees = viterbi_parser.parse(
-    nltk.word_tokenize('Le famiglie delle vittime hanno incontrato la famiglia del pilota.'))
-
-trees = [tree for tree in trees]
-if len(trees) < 1:
-    print("FALLITO !")
-
-for tree in trees:
-    print(tree)
-    tree.draw()

@@ -1,7 +1,7 @@
 __author__ = 'BLN'
 
-from postagging import MostFrequentTagger, HMMTagger
-from postaggingutils import universal_treebank_pos_tags, load_corpus
+from pos_tagging import MostFrequentTagger, HMMTagger
+from pos_tagging_utils import universal_treebank_pos_tags, load_corpus
 
 corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-dev.conll"
 #corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
