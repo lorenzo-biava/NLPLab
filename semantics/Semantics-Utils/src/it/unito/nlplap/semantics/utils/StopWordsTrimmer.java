@@ -15,16 +15,18 @@ public class StopWordsTrimmer {
 
 	/**
 	 * Remove all chars except letters (replace with space).
+	 * 
 	 * @param text
 	 * @return
 	 */
 	public static String normalize(String text) {
-		//return text.replaceAll("[^A-Za-z0-9 ]", " ");
+		// return text.replaceAll("[^A-Za-z0-9 ]", " ");
 		return text.replaceAll("[^A-Za-z ]", " ").toLowerCase();
 	}
 
 	/**
 	 * Split a sentence in words by spaces.
+	 * 
 	 * @param text
 	 * @return
 	 */
@@ -34,6 +36,7 @@ public class StopWordsTrimmer {
 
 	/**
 	 * Remove stopwords found in the given dataset.
+	 * 
 	 * @param words
 	 * @param datasetPath
 	 * @return
@@ -45,14 +48,17 @@ public class StopWordsTrimmer {
 		List<String> okWords = new ArrayList<String>();
 
 		for (String word : words)
-			if (!stopWords.containsKey(word))
-				okWords.add(word);
+			if (!word.equals(""))
+				if (!stopWords.containsKey(word))
+					okWords.add(word);
 
 		return okWords;
 	}
 
 	/**
-	 * Remove stopwords using the default dataset ({@link StopWordsTrimmer#DEFAULT_DATASET_FILE});
+	 * Remove stopwords using the default dataset (
+	 * {@link StopWordsTrimmer#DEFAULT_DATASET_FILE});
+	 * 
 	 * @param words
 	 * @return
 	 * @throws FileNotFoundException
