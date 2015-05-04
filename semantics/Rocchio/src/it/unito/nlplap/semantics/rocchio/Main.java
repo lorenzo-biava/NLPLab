@@ -27,7 +27,7 @@ public class Main {
 	public static class Document {
 		private String name, path, text, category;
 		private List<String> terms = new ArrayList<String>();
-		private Map<String, MutableInt> termFrequency = new HashMap<String, Main.MutableInt>();
+		private Map<String, MutableInt> collectionTermFrequency = new HashMap<String, Main.MutableInt>();
 
 		public Document(String name, String path, String text,
 				List<String> terms, String category) {
@@ -71,12 +71,12 @@ public class Main {
 			this.category = category;
 		}
 
-		public Map<String, MutableInt> getTermFrequency() {
-			return termFrequency;
+		public Map<String, MutableInt> getColletionTermFrequency() {
+			return collectionTermFrequency;
 		}
 
-		public void setTermFrequency(Map<String, MutableInt> termFrequency) {
-			this.termFrequency = termFrequency;
+		public void setCollectionTermFrequency(Map<String, MutableInt> termFrequency) {
+			this.collectionTermFrequency = termFrequency;
 		}
 
 		public List<String> getTerms() {
@@ -170,17 +170,21 @@ public class Main {
 				terms));
 
 		for (Document doc : documents) {
-			doc.setTermFrequency(clone(terms));
+			doc.setCollectionTermFrequency(clone(terms));
 
 			for (String term : doc.getTerms())
-				doc.getTermFrequency().get(term).increment();
+				doc.getColletionTermFrequency().get(term).increment();
 
 			LOG.info(String.format("Document '%s' termFrequency=[%s]",
 					doc.getName(),
-					sortByComparator(doc.getTermFrequency(), true)));
+					sortByComparator(doc.getColletionTermFrequency(), true)));
 
 		}
 		LOG.info("ENDED");
+		
+		Document d = documents.get(0);
+		for(Document q : documents)
+			LOG.info(String.format("SIMILARITY: %f", angleCosineSimilarity(d.getColletionTermFrequency(), q.getColletionTermFrequency())));
 	}
 
 	private static <A extends Comparable<A>> Map<String, A> sortByComparator(
@@ -220,5 +224,29 @@ public class Main {
 					(B) ((Cloneable) entry.getValue()).clone());
 		}
 		return clone;
+	}
+	
+	public static double angleCosineSimilarity(Map<String, MutableInt> wd, Map<String, MutableInt> wq){
+		if(wd.size()!=wq.size())
+			throw new IllegalArgumentException("Vectors must contain the same elements.");
+		
+		double sum=0;
+		for(Map.Entry<String, MutableInt> d : wd.entrySet()) {
+			sum+=d.getValue().get()*wq.get(d.getKey()).get();
+		}
+		
+		double wd2=0;
+		for(Map.Entry<String, MutableInt> d : wd.entrySet()) {
+			wd2+=Math.pow(d.getValue().get(),2);
+		}
+		wd2=Math.sqrt(wd2);
+		
+		double wq2=0;
+		for(Map.Entry<String, MutableInt> q : wq.entrySet()) {
+			wq2+=Math.pow(q.getValue().get(),2);
+		}
+		wq2=Math.sqrt(wq2);
+		
+		return sum/(wd2*wq2);
 	}
 }
