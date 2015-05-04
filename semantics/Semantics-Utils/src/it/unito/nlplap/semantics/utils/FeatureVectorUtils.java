@@ -1,15 +1,14 @@
 package it.unito.nlplap.semantics.utils;
 
+import it.unito.nlplap.semantics.utils.lemmatizer.MorphItLemmatizer;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
 
 import org.apache.commons.lang3.StringUtils;
-import org.tartarus.snowball.SnowballStemmer;
-import org.tartarus.snowball.ext.italianStemmer;
 
-import edu.stanford.nlp.international.Languages.Language;
 import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
@@ -21,6 +20,7 @@ import edu.stanford.nlp.util.CoreMap;
 public class FeatureVectorUtils {
 
 	public static StanfordCoreNLP pipeline;
+	public static MorphItLemmatizer morphitLemmatizer;
 
 	/**
 	 * Stub, currently returning only normalized and lemmatized words.
@@ -52,13 +52,22 @@ public class FeatureVectorUtils {
 		List<String> lemmas = new ArrayList<String>();
 
 		if (language == Locale.ITALIAN) {
-			SnowballStemmer stemmer = (SnowballStemmer) new italianStemmer();
+			// SnowballStemmer stemmer = (SnowballStemmer) new italianStemmer();
+			//
+			// for (String string : words) {
+			// stemmer.setCurrent(string);
+			// stemmer.stem();
+			// lemmas.add(stemmer.getCurrent());
+			// }
+			if (morphitLemmatizer == null)
+				morphitLemmatizer = new MorphItLemmatizer();
 
 			for (String string : words) {
-				stemmer.setCurrent(string);
-				stemmer.stem();
-				lemmas.add(stemmer.getCurrent());
+				if(string.equalsIgnoreCase("può"))
+					string=string;
+				lemmas.add(morphitLemmatizer.getLemmaString(string));
 			}
+
 		} else {
 			// creates a StanfordCoreNLP object, with POS tagging,
 			// lemmatization,
@@ -69,7 +78,7 @@ public class FeatureVectorUtils {
 				pipeline = new StanfordCoreNLP(props);
 
 			// read some text in the text variable
-			text = StringUtils.join(words, " ");
+			text = StringUtils.join(words, " ").toLowerCase();
 
 			// create an empty Annotation just with the given text
 			Annotation document = new Annotation(text);
@@ -103,8 +112,8 @@ public class FeatureVectorUtils {
 	}
 
 	/**
-	 * Return normalized, tokenized and lemmatized words-
-	 * Default English locale.
+	 * Return normalized, tokenized and lemmatized words- Default English
+	 * locale.
 	 * 
 	 * @param text
 	 * @return

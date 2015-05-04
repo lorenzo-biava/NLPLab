@@ -85,6 +85,7 @@ la
 li
 le
 gli
+già
 ne
 il
 un
@@ -93,6 +94,8 @@ una
 ma
 ed
 se
+sè
+sé
 perché
 anche
 come
@@ -103,6 +106,8 @@ chi
 cui
 non
 più
+può
+però
 quale
 quanto
 quanti

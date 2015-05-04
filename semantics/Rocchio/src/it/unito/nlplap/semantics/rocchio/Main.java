@@ -21,7 +21,7 @@ import org.apache.logging.log4j.Logger;
 public class Main {
 
 	private static final Logger LOG = LogManager.getLogger(Main.class);
-	
+
 	private static final String DOCUMENT_DIR_PATH = "data/docs_200";
 
 	public static class Document {
@@ -124,13 +124,13 @@ public class Main {
 		public String toString() {
 			return value + "";
 		}
-		
+
 		@Override
-		public int compareTo(MutableInt o) {			
-			if(o.get()>value)
+		public int compareTo(MutableInt o) {
+			if (o.get() > value)
 				return -1;
-			else if(o.get()<value)
-					return 1;
+			else if (o.get() < value)
+				return 1;
 			return 0;
 		}
 	}
@@ -141,7 +141,7 @@ public class Main {
 		List<Document> documents = new ArrayList<Document>();
 
 		File docDir = new File(DOCUMENT_DIR_PATH);
-		int limit = -999;
+		int limit = 0;
 		for (File file : docDir.listFiles()) {
 			if (limit > 10)
 				break;
@@ -155,8 +155,8 @@ public class Main {
 				}
 				String text = Utils.fileToText(file);
 				documents.add(new Document(file.getName(), file
-						.getAbsolutePath(), text, FeatureVectorUtils
-						.getLemmas(text, Locale.ITALIAN), category));
+						.getAbsolutePath(), text, FeatureVectorUtils.getLemmas(
+						text, Locale.ITALIAN), category));
 			}
 		}
 
@@ -165,10 +165,9 @@ public class Main {
 			for (String term : doc.getTerms())
 				terms.put(term, new MutableInt(0));
 		}
-		
-		LOG.info(String.format(
-				"Total terms '%d', terms=[%s]", terms.size(), terms));
 
+		LOG.info(String.format("Total terms '%d', terms=[%s]", terms.size(),
+				terms));
 
 		for (Document doc : documents) {
 			doc.setTermFrequency(clone(terms));
@@ -176,10 +175,10 @@ public class Main {
 			for (String term : doc.getTerms())
 				doc.getTermFrequency().get(term).increment();
 
-			LOG.debug(String.format(
-					"Document '%s' termFrequency=[%s]", doc.getName(), sortByComparator(doc.getTermFrequency(),true)));
+			LOG.info(String.format("Document '%s' termFrequency=[%s]",
+					doc.getName(),
+					sortByComparator(doc.getTermFrequency(), true)));
 
-			
 		}
 		LOG.info("ENDED");
 	}
@@ -187,8 +186,8 @@ public class Main {
 	private static <A extends Comparable<A>> Map<String, A> sortByComparator(
 			Map<String, A> unsortMap, boolean reverse) {
 
-		final boolean rev=reverse;
-		
+		final boolean rev = reverse;
+
 		// Convert Map to List
 		List<Map.Entry<String, A>> list = new LinkedList<Map.Entry<String, A>>(
 				unsortMap.entrySet());
@@ -196,7 +195,8 @@ public class Main {
 		// Sort list with comparator, to compare the Map values
 		Collections.sort(list, new Comparator<Map.Entry<String, A>>() {
 			public int compare(Map.Entry<String, A> o1, Map.Entry<String, A> o2) {
-				return (o1.getValue()).compareTo(o2.getValue())*(rev?-1:1);
+				return (o1.getValue()).compareTo(o2.getValue())
+						* (rev ? -1 : 1);
 			}
 		});
 
