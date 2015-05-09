@@ -18,19 +18,40 @@ public class RocchioClassificationBenchmark {
 	private static final Logger LOG = LogManager
 			.getLogger(RocchioClassificationBenchmark.class);
 
-	private static final String DOCUMENT_DIR_PATH = "data/docs_200";
+	private static final String DOCUMENT_DIR_PATH_IT = "data/docs_200";
+	private static final Locale DOCUMENTS_LANGUAGE_IT = Locale.ITALIAN;
+	private static final String DOCUMENT_DIR_PATH_EN = "data/20_NGs_400";
+	private static final Locale DOCUMENTS_LANGUAGE_EN = Locale.ENGLISH;
 
 	public static void main(String[] args) throws Exception {
-		File docDir = new File(DOCUMENT_DIR_PATH);
+
+		boolean ita = false;
+
+		String docDirPath;
+		Locale docLang;
+		File docDir;
+		List<Document> dataSet;
+
+		if (ita) {
+			docDirPath = DOCUMENT_DIR_PATH_IT;
+			docLang = DOCUMENTS_LANGUAGE_IT;
+			docDir = new File(docDirPath);
+			dataSet = loadDocs(docDir, docLang);
+		} else {
+			docDirPath = DOCUMENT_DIR_PATH_EN;
+			docLang = DOCUMENTS_LANGUAGE_EN;
+			docDir = new File(docDirPath);
+			dataSet = loadDocsInSubdirs(docDir, docLang);
+		}
 
 		double testsetRatio = 0.10;
-		List<Document> dataSet = loadDocs(docDir, Locale.ITALIAN);
+
 		List<Document> testSet = new ArrayList<Document>();
 		List<Document> trainingSet = new ArrayList<Document>();
 
 		datasetSplit(dataSet, testsetRatio, trainingSet, testSet);
 
-		RocchioClassifier rc = new RocchioClassifier(trainingSet);
+		RocchioClassifier rc = new RocchioClassifier(trainingSet, 5);
 
 		// Classify docs
 		int correctCount = 0;
@@ -80,7 +101,8 @@ public class RocchioClassificationBenchmark {
 			if (limit > 10)
 				break;
 
-			if (file.isFile() && file.getName().indexOf(".") != 0) {
+			if (file.isFile() && file.getName().indexOf(".") != 0
+					&& file.length() > 0) {
 				limit++;
 				String category = null;
 				try {
@@ -91,6 +113,35 @@ public class RocchioClassificationBenchmark {
 				documents.add(new Document(file.getName(), file
 						.getAbsolutePath(), text, FeatureVectorUtils.getLemmas(
 						text, locale), category));
+			}
+		}
+
+		return documents;
+	}
+
+	public static List<Document> loadDocsInSubdirs(File docDir, Locale locale)
+			throws Exception {
+		List<Document> documents = new ArrayList<Document>();
+
+		int limit = -400;
+		for (File dir : docDir.listFiles()) {
+			if (limit > 10)
+				break;
+
+			if (dir.isDirectory()) {
+				String category = dir.getName();
+
+				for (File file : dir.listFiles()) {
+					if (file.isFile() && file.getName().indexOf(".") != 0
+							&& file.length() > 0) {
+						limit++;
+
+						String text = Utils.fileToText(file);
+						documents.add(new Document(file.getName(), file
+								.getAbsolutePath(), text, FeatureVectorUtils
+								.getLemmas(text, locale), category));
+					}
+				}
 			}
 		}
 

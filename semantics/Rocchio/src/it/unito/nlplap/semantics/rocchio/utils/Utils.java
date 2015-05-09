@@ -12,7 +12,7 @@ import java.util.Map.Entry;
 
 public class Utils {
 
-	private static <A extends Comparable<A>> Map<String, A> sortByComparator(
+	public static <A extends Comparable<A>> Map<String, A> sortByComparator(
 			Map<String, A> unsortMap, boolean reverse) {
 	
 		final boolean rev = reverse;

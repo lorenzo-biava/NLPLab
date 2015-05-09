@@ -3,6 +3,7 @@ package it.unito.nlplap.semantics.rocchio;
 import it.unito.nlplap.semantics.rocchio.utils.Document;
 import it.unito.nlplap.semantics.rocchio.utils.MutableDouble;
 import it.unito.nlplap.semantics.rocchio.utils.MutableInt;
+import it.unito.nlplap.semantics.rocchio.utils.Utils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ public class RocchioClassifier {
 
 	Map<String, MutableInt> terms = new HashMap<String, MutableInt>();
 	Map<String, MutableInt> featureVector = new HashMap<String, MutableInt>();
+	Map<String, MutableDouble> idf = new HashMap<String, MutableDouble>();
 	Map<String, Map<String, MutableDouble>> rocchioClasses;
 
 	/**
@@ -28,39 +30,68 @@ public class RocchioClassifier {
 	 *            correct category and an already lemmatized term list. Further
 	 *            processing will be performed to calculate Term-Frequency
 	 *            related to the collection.
+	 * @param pruningThreshold
+	 *            a threshold to prune terms with IDF below. Set to 0 to
+	 *            disable.
 	 */
-	public RocchioClassifier(List<Document> trainingDocuments) {
+	public RocchioClassifier(List<Document> trainingDocuments,
+			double pruningThreshold) {
 		// Train the classificator
-		train(trainingDocuments);
+		train(trainingDocuments, pruningThreshold);
 	}
 
-	protected void train(List<Document> documents) {
+	protected void train(List<Document> documents, double pruningThreshold) {
 
 		LOG.info("Training in progress...");
 
-		// Extract terms union (feature vector)
+		int documentCount = documents.size();
+
+		LOG.info(String.format("Training: Total docs=%d", documentCount));
+		// Extract collection terms (feature vector) - union
+		// Calculate terms IDF
 		for (Document doc : documents) {
-			for (String term : doc.getTerms())
-				terms.put(term, new MutableInt(0));
+			for (Map.Entry<String, MutableInt> term : doc.getTermCount()
+					.entrySet()) {
+				if (!idf.containsKey(term.getKey()))
+					idf.put(term.getKey(), new MutableDouble(1));
+				else
+					idf.get(term.getKey()).increment();
+			}
+		}
+		for (Map.Entry<String, MutableDouble> term : idf.entrySet()) {
+			term.getValue().setValue(
+					Math.log(documentCount / term.getValue().getValue()));
+		}
+		LOG.info(String.format("Training: Total IDF='%d', idf=[%s]",
+				idf.size(), Utils.sortByComparator(idf, true)));
+
+		// Extract collection terms (feature vector)
+		// Only relevant terms (i.e. idf > 0)
+		for (Map.Entry<String, MutableDouble> term : idf.entrySet()) {
+			if (term.getValue().getValue() >= pruningThreshold)
+				terms.put(term.getKey(), new MutableInt(0));
 		}
 		featureVector = it.unito.nlplap.semantics.rocchio.utils.Utils
 				.clone(terms);
 
-		LOG.info(String.format(
-				"Training: Total docs=%d, Total terms='%d', terms=[%s]",
-				documents.size(), terms.size(), terms));
+		LOG.info(String.format("Training: Total terms='%d', terms=[%s]",
+				terms.size(), terms));
 
 		LOG.info("Training: Computing documents features...");
 		// For each document, extract term frequency
 		for (Document doc : documents) {
 			doc = computeDocumentFeatures(doc);
 
-			// LOG.info(String.format("Document '%s' termCount=[%s]",
-			// doc.getName(),
-			// sortByComparator(doc.getColletionTermCount(), true)));
-			// LOG.info(String.format("Document '%s' termFrequency=[%s]",
-			// doc.getName(),
-			// sortByComparator(doc.getCollectionTermFrequency(), true)));
+			LOG.info(String.format(
+					"Document '%s' termCount=[%s]",
+					doc.getName(),
+					trimLog(Utils.sortByComparator(doc.getTermCount(), true),
+							256)));
+			LOG.info(String.format(
+					"Document '%s' termFrequency=[%s]",
+					doc.getName(),
+					trimLog(Utils.sortByComparator(
+							doc.getCollectionTermFrequency(), true), 256)));
 			LOG.info(String.format(
 					"Training: Extracting features of document '%s'",
 					doc.getName()));
@@ -74,11 +105,15 @@ public class RocchioClassifier {
 				terms);
 		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
 				.entrySet()) {
-			// LOG.info(String.format("Rocchio Class '%s' features=[%s]",
-			// clazz.getKey(), sortByComparator(clazz.getValue(), true)));
+			LOG.info(String.format(
+					"Rocchio Class '%s' features=[%s]",
+					clazz.getKey(),
+					trimLog(Utils.sortByComparator(clazz.getValue(), true), 256)));
 			LOG.info(String.format("Training: extracted Rocchio class '%s'",
 					clazz.getKey()));
 		}
+		LOG.info(String.format("Training: Total classes=%d",
+				rocchioClasses.size()));
 
 		LOG.info("Training complete");
 	}
@@ -87,19 +122,15 @@ public class RocchioClassifier {
 		doc.setCollectionTermCount(it.unito.nlplap.semantics.rocchio.utils.Utils
 				.clone(terms));
 
-		// Term count
-		for (String term : doc.getTerms()) {
-			MutableInt t = doc.getColletionTermCount().get(term);
-			if (t != null)
-				t.increment();
-		}
+		// Term Count
+		doc.getCollectionTermCount().putAll(doc.getTermCount());
 
 		// Term frequency
 		for (Map.Entry<String, MutableInt> term : terms.entrySet())
 			doc.getCollectionTermFrequency().put(
 					term.getKey(),
-					new MutableDouble((double) doc.getColletionTermCount()
-							.get(term.getKey()).getValue()
+					new MutableDouble((double) (doc.getCollectionTermCount()
+							.get(term.getKey()).getValue())
 							/ doc.getTerms().size()));
 
 		return doc;
@@ -233,4 +264,9 @@ public class RocchioClassifier {
 		return classes;
 	}
 
+	public static String trimLog(Object obj, int maxSize) {
+		String text = obj.toString();
+		return text.length() > maxSize ? text.substring(0, maxSize) + "..."
+				: text;
+	}
 }

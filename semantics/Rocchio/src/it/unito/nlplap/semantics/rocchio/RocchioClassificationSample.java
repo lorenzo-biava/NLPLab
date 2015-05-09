@@ -43,7 +43,7 @@ public class RocchioClassificationSample {
 			}
 		}
 
-		RocchioClassifier rocchio = new RocchioClassifier(documents);
+		RocchioClassifier rocchio = new RocchioClassifier(documents, 5);
 
 		// Classify docs
 		limit = -200;

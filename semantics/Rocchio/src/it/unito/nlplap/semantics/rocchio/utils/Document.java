@@ -1,24 +1,34 @@
 package it.unito.nlplap.semantics.rocchio.utils;
 
+import it.unito.nlplap.semantics.rocchio.RocchioClassificationBenchmark;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class Document {
+	private static final Logger LOG = LogManager.getLogger(Document.class);
+
 	private String name, path, text, category;
 	private List<String> terms = new ArrayList<String>();
+	private Map<String, MutableInt> termCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableInt> collectionTermCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableDouble> collectionTermFrequency = new HashMap<String, MutableDouble>();
 
-	public Document(String name, String path, String text,
-			List<String> terms, String category) {
+	public Document(String name, String path, String text, List<String> terms,
+			String category) {
 		super();
 		this.name = name;
 		this.path = path;
 		this.text = text;
 		this.terms = terms;
 		this.category = category;
+
+		setTerms(terms);
 	}
 
 	public String getName() {
@@ -53,12 +63,21 @@ public class Document {
 		this.category = category;
 	}
 
-	public Map<String, MutableInt> getColletionTermCount() {
+	public Map<String, MutableInt> getTermCount() {
+		return termCount;
+	}
+
+	public void setTermCount(Map<String, MutableInt> termCount) {
+		this.termCount = termCount;
+	}
+
+	public Map<String, MutableInt> getCollectionTermCount() {
 		return collectionTermCount;
 	}
 
-	public void setCollectionTermCount(Map<String, MutableInt> termCount) {
-		this.collectionTermCount = termCount;
+	public void setCollectionTermCount(
+			Map<String, MutableInt> collectionTermCount) {
+		this.collectionTermCount = collectionTermCount;
 	}
 
 	public Map<String, MutableDouble> getCollectionTermFrequency() {
@@ -80,6 +99,20 @@ public class Document {
 
 	public void setTerms(List<String> terms) {
 		this.terms = terms;
+
+		if (terms != null) {
+			if (terms.size() == 0)
+				LOG.warn(String.format("Document '%s' has no terms !", this.name));
+			getTermCount().clear();
+			// Term count
+			for (String term : terms) {
+				MutableInt t = getTermCount().get(term);
+				if (t != null)
+					t.increment();
+				else
+					getTermCount().put(term, new MutableInt(1));
+			}
+		}
 	}
 
 }
