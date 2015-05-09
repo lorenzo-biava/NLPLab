@@ -27,7 +27,8 @@ public class Main {
 	public static class Document {
 		private String name, path, text, category;
 		private List<String> terms = new ArrayList<String>();
-		private Map<String, MutableInt> collectionTermFrequency = new HashMap<String, Main.MutableInt>();
+		private Map<String, MutableInt> collectionTermCount = new HashMap<String, Main.MutableInt>();
+		private Map<String, MutableDouble> collectionTermFrequency = new HashMap<String, Main.MutableDouble>();
 
 		public Document(String name, String path, String text,
 				List<String> terms, String category) {
@@ -71,12 +72,25 @@ public class Main {
 			this.category = category;
 		}
 
-		public Map<String, MutableInt> getColletionTermFrequency() {
+		public Map<String, MutableInt> getColletionTermCount() {
+			return collectionTermCount;
+		}
+
+		public void setCollectionTermCount(Map<String, MutableInt> termCount) {
+			this.collectionTermCount = termCount;
+		}
+
+		public Map<String, MutableDouble> getCollectionTermFrequency() {
 			return collectionTermFrequency;
 		}
 
-		public void setCollectionTermFrequency(Map<String, MutableInt> termFrequency) {
-			this.collectionTermFrequency = termFrequency;
+		public void setCollectionTermFrequency(
+				Map<String, MutableDouble> collectionTermFrequency) {
+			this.collectionTermFrequency = collectionTermFrequency;
+		}
+
+		public Map<String, MutableDouble> getCollectionTermWeight() {
+			return collectionTermFrequency;
 		}
 
 		public List<String> getTerms() {
@@ -90,7 +104,7 @@ public class Main {
 	}
 
 	public static class MutableInt implements Cloneable, Comparable<MutableInt> {
-		int value = 1;
+		private int value = 1;
 
 		/**
 		 * Default value = 1;
@@ -112,8 +126,12 @@ public class Main {
 			++value;
 		}
 
-		public int get() {
+		public int getValue() {
 			return value;
+		}
+
+		public void setValue(int value) {
+			this.value = value;
 		}
 
 		public Object clone() {
@@ -127,9 +145,60 @@ public class Main {
 
 		@Override
 		public int compareTo(MutableInt o) {
-			if (o.get() > value)
+			if (o.getValue() > value)
 				return -1;
-			else if (o.get() < value)
+			else if (o.getValue() < value)
+				return 1;
+			return 0;
+		}
+	}
+
+	public static class MutableDouble implements Cloneable,
+			Comparable<MutableDouble> {
+		private double value = 1;
+
+		/**
+		 * Default value = 1;
+		 */
+		public MutableDouble() {
+
+		}
+
+		/**
+		 * Decide initial value
+		 * 
+		 * @param value
+		 */
+		public MutableDouble(double value) {
+			this.value = value;
+		}
+
+		public void increment() {
+			++value;
+		}
+
+		public double getValue() {
+			return value;
+		}
+
+		public void setValue(double value) {
+			this.value = value;
+		}
+
+		public Object clone() {
+			return new MutableDouble(this.value);
+		}
+
+		@Override
+		public String toString() {
+			return value + "";
+		}
+
+		@Override
+		public int compareTo(MutableDouble o) {
+			if (o.getValue() > value)
+				return -1;
+			else if (o.getValue() < value)
 				return 1;
 			return 0;
 		}
@@ -141,7 +210,7 @@ public class Main {
 		List<Document> documents = new ArrayList<Document>();
 
 		File docDir = new File(DOCUMENT_DIR_PATH);
-		int limit = 0;
+		int limit = -200;
 		for (File file : docDir.listFiles()) {
 			if (limit > 10)
 				break;
@@ -169,22 +238,84 @@ public class Main {
 		LOG.info(String.format("Total terms '%d', terms=[%s]", terms.size(),
 				terms));
 
+		// For each document, extract term frequency
 		for (Document doc : documents) {
-			doc.setCollectionTermFrequency(clone(terms));
+			doc.setCollectionTermCount(clone(terms));
 
+			// Term count
 			for (String term : doc.getTerms())
-				doc.getColletionTermFrequency().get(term).increment();
+				doc.getColletionTermCount().get(term).increment();
 
-			LOG.info(String.format("Document '%s' termFrequency=[%s]",
-					doc.getName(),
-					sortByComparator(doc.getColletionTermFrequency(), true)));
+			// Term frequency
+			for (Map.Entry<String, MutableInt> term : terms.entrySet())
+				doc.getCollectionTermFrequency().put(
+						term.getKey(),
+						new MutableDouble((double) doc.getColletionTermCount()
+								.get(term.getKey()).getValue()
+								/ doc.getTerms().size()));
+
+			// LOG.info(String.format("Document '%s' termCount=[%s]",
+			// doc.getName(),
+			// sortByComparator(doc.getColletionTermCount(), true)));
+			// LOG.info(String.format("Document '%s' termFrequency=[%s]",
+			// doc.getName(),
+			// sortByComparator(doc.getCollectionTermFrequency(), true)));
+			LOG.info(String.format("Document '%s'", doc.getName()));
 
 		}
 		LOG.info("ENDED");
-		
-		Document d = documents.get(0);
-		for(Document q : documents)
-			LOG.info(String.format("SIMILARITY: %f", angleCosineSimilarity(d.getColletionTermFrequency(), q.getColletionTermFrequency())));
+
+		// Document d = documents.get(0);
+		// for (Document q : documents)
+		// LOG.debug(String.format(
+		// "SIMILARITY: %f",
+		// angleCosineSimilarity(d.getColletionTermFrequency(),
+		// q.getColletionTermFrequency())));
+
+		Map<String, Map<String, MutableDouble>> rocchioClasses = extractRocchioClasses(
+				documents, terms);
+		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
+				.entrySet()) {
+			// LOG.info(String.format("Rocchio Class '%s' features=[%s]",
+			// clazz.getKey(), sortByComparator(clazz.getValue(), true)));
+			LOG.info(String.format("Rocchio Class '%s'", clazz.getKey()));
+		}
+
+		// Classify docs
+		limit = -200;
+		int correctCount = 0;
+		int wrongCount = 0;
+		for (Document doc : documents) {
+			if (limit > 0)
+				break;
+
+			// Test each Rocchio class
+			double bestScore = 0;
+			String bestClass = "";
+			for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
+					.entrySet()) {
+				double score = angleCosineSimilarity(
+						doc.getCollectionTermWeight(), clazz.getValue());
+				if (score > bestScore) {
+					bestScore = score;
+					bestClass = clazz.getKey();
+				}
+			}
+
+			LOG.info(String.format(
+					"Document '%s', correctClass=%s, bestClass=%s, score=%s",
+					doc.getName(), doc.getCategory(), bestClass, bestScore));
+			if (doc.getCategory().equals(bestClass))
+				correctCount++;
+			else
+				wrongCount++;
+
+			limit++;
+		}
+
+		LOG.info(String.format(
+				"Total docs=%d, Correctly classified=%d, Badly classified=%d",
+				documents.size(), correctCount, wrongCount));
 	}
 
 	private static <A extends Comparable<A>> Map<String, A> sortByComparator(
@@ -225,28 +356,109 @@ public class Main {
 		}
 		return clone;
 	}
-	
-	public static double angleCosineSimilarity(Map<String, MutableInt> wd, Map<String, MutableInt> wq){
-		if(wd.size()!=wq.size())
-			throw new IllegalArgumentException("Vectors must contain the same elements.");
-		
-		double sum=0;
-		for(Map.Entry<String, MutableInt> d : wd.entrySet()) {
-			sum+=d.getValue().get()*wq.get(d.getKey()).get();
+
+	public static double angleCosineSimilarity(Map<String, MutableDouble> wd,
+			Map<String, MutableDouble> wq) {
+		if (wd.size() != wq.size())
+			throw new IllegalArgumentException(
+					"Vectors must contain the same elements.");
+
+		double sum = 0;
+		for (Map.Entry<String, MutableDouble> d : wd.entrySet()) {
+			sum += d.getValue().getValue() * wq.get(d.getKey()).getValue();
 		}
-		
-		double wd2=0;
-		for(Map.Entry<String, MutableInt> d : wd.entrySet()) {
-			wd2+=Math.pow(d.getValue().get(),2);
+
+		double wd2 = 0;
+		for (Map.Entry<String, MutableDouble> d : wd.entrySet()) {
+			wd2 += Math.pow(d.getValue().getValue(), 2);
 		}
-		wd2=Math.sqrt(wd2);
-		
-		double wq2=0;
-		for(Map.Entry<String, MutableInt> q : wq.entrySet()) {
-			wq2+=Math.pow(q.getValue().get(),2);
+		wd2 = Math.sqrt(wd2);
+
+		double wq2 = 0;
+		for (Map.Entry<String, MutableDouble> q : wq.entrySet()) {
+			wq2 += Math.pow(q.getValue().getValue(), 2);
 		}
-		wq2=Math.sqrt(wq2);
-		
-		return sum/(wd2*wq2);
+		wq2 = Math.sqrt(wq2);
+
+		return sum / (wd2 * wq2);
+	}
+
+	public static Map<String, Map<String, MutableDouble>> extractRocchioClasses(
+			List<Document> documents, Map<String, MutableInt> featuresInt) {
+		Map<String, Map<String, MutableDouble>> classes = new HashMap<String, Map<String, MutableDouble>>();
+		Map<String, List<Document>> classesPOS = new HashMap<String, List<Document>>();
+		Map<String, List<Document>> classesNEG = new HashMap<String, List<Document>>();
+
+		Map<String, MutableDouble> features = new HashMap<String, MutableDouble>();
+		for (Map.Entry<String, MutableInt> feature : featuresInt.entrySet()) {
+			features.put(feature.getKey(), new MutableDouble(feature.getValue()
+					.getValue()));
+		}
+
+		// Extract empty classes from documents
+		for (Document doc : documents) {
+			if (classes.get(doc.getCategory()) == null) {
+				// Initialize class
+				classes.put(doc.getCategory(), clone(features));
+				List<Document> pos = new ArrayList<Document>();
+				pos.add(doc);
+				classesPOS.put(doc.getCategory(), pos);
+
+				classesNEG.put(doc.getCategory(), new ArrayList<Document>());
+			} else {
+				// Add document to class POSITIVES
+				classesPOS.get(doc.getCategory()).add(doc);
+			}
+		}
+
+		// For each class, extract class NEGATIVES
+		for (Map.Entry<String, Map<String, MutableDouble>> clazz : classes
+				.entrySet()) {
+			List<Document> neg = classesNEG.get(clazz.getKey());
+
+			for (Document doc : documents) {
+				if (!doc.getCategory().equals(clazz.getKey()))
+					neg.add(doc);
+			}
+
+		}
+
+		double beta = 16;
+		double gamma = 4;
+
+		// For each class, extract features values
+		for (Map.Entry<String, Map<String, MutableDouble>> clazz : classes
+				.entrySet()) {
+
+			// For each feature
+			for (Map.Entry<String, MutableDouble> feature : clazz.getValue()
+					.entrySet()) {
+
+				// For each POS
+				double pos = 0;
+				int posSize = classesPOS.get(clazz.getKey()).size();
+				for (Document doc : classesPOS.get(clazz.getKey())) {
+					pos += doc.getCollectionTermWeight().get(feature.getKey())
+							.getValue()
+							/ posSize;
+				}
+				pos = pos * beta;
+
+				// For each NEG
+				double neg = 0;
+				int negSize = classesNEG.get(clazz.getKey()).size();
+				for (Document doc : classesNEG.get(clazz.getKey())) {
+					pos += doc.getCollectionTermWeight().get(feature.getKey())
+							.getValue()
+							/ negSize;
+				}
+				neg = neg * gamma;
+
+				feature.getValue().setValue(pos - neg);
+			}
+
+		}
+
+		return classes;
 	}
 }
