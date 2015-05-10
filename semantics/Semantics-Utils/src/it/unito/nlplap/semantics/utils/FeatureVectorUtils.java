@@ -46,8 +46,10 @@ public class FeatureVectorUtils {
 	 */
 	public static List<String> getLemmas(String text, Locale language)
 			throws Exception {
-		List<String> words = StopWordsTrimmer.trim(StopWordsTrimmer
-				.tokenize(StopWordsTrimmer.normalize(text)));
+
+		StopWordsTrimmer swt = new StopWordsTrimmer(language);
+		List<String> words = swt.trim(StopWordsTrimmer.tokenize(swt
+				.normalize(text)));
 
 		List<String> lemmas = new ArrayList<String>();
 
@@ -63,8 +65,6 @@ public class FeatureVectorUtils {
 				morphitLemmatizer = new MorphItLemmatizer();
 
 			for (String string : words) {
-				if(string.equalsIgnoreCase("può"))
-					string=string;
 				lemmas.add(morphitLemmatizer.getLemmaString(string));
 			}
 
@@ -108,6 +108,7 @@ public class FeatureVectorUtils {
 			}
 		}
 
+		lemmas = swt.trim(lemmas);
 		return lemmas;
 	}
 
@@ -120,9 +121,6 @@ public class FeatureVectorUtils {
 	 * @throws Exception
 	 */
 	public static List<String> getLemmas(String text) throws Exception {
-		List<String> words = StopWordsTrimmer.trim(StopWordsTrimmer
-				.tokenize(StopWordsTrimmer.normalize(text)));
-
 		return getLemmas(text, Locale.ENGLISH);
 	}
 }

@@ -80,22 +80,12 @@ public class RocchioClassifier {
 		LOG.info("Training: Computing documents features...");
 		// For each document, extract term frequency
 		for (Document doc : documents) {
-			doc = computeDocumentFeatures(doc);
 
-			LOG.info(String.format(
-					"Document '%s' termCount=[%s]",
-					doc.getName(),
-					trimLog(Utils.sortByComparator(doc.getTermCount(), true),
-							256)));
-			LOG.info(String.format(
-					"Document '%s' termFrequency=[%s]",
-					doc.getName(),
-					trimLog(Utils.sortByComparator(
-							doc.getCollectionTermFrequency(), true), 256)));
 			LOG.info(String.format(
 					"Training: Extracting features of document '%s'",
 					doc.getName()));
 
+			doc = computeDocumentFeatures(doc, idf);
 		}
 
 		// Extract Rocchio classes
@@ -119,6 +109,11 @@ public class RocchioClassifier {
 	}
 
 	public Document computeDocumentFeatures(Document doc) {
+		return computeDocumentFeatures(doc, null);
+	}
+
+	public Document computeDocumentFeatures(Document doc,
+			Map<String, MutableDouble> idf) {
 		doc.setCollectionTermCount(it.unito.nlplap.semantics.rocchio.utils.Utils
 				.clone(terms));
 
@@ -133,6 +128,30 @@ public class RocchioClassifier {
 							.get(term.getKey()).getValue())
 							/ doc.getTerms().size()));
 
+		doc.setCollectionTermWeight(it.unito.nlplap.semantics.rocchio.utils.Utils
+				.clone(doc.getCollectionTermFrequency()));
+
+		LOG.info(String.format("Document '%s' termCount=[%s]", doc.getName(),
+				trimLog(Utils.sortByComparator(doc.getTermCount(), true), 256)));
+		LOG.info(String.format(
+				"Document '%s' termFrequency=[%s]",
+				doc.getName(),
+				trimLog(Utils.sortByComparator(
+						doc.getCollectionTermFrequency(), true), 256)));
+
+		if (idf != null) {
+			for (Map.Entry<String, MutableDouble> term : doc
+					.getCollectionTermWeight().entrySet())
+				term.getValue().setValue(
+						term.getValue().getValue()
+								* idf.get(term.getKey()).getValue());
+		}
+		LOG.info(String.format(
+				"Document '%s' termWeight=[%s]",
+				doc.getName(),
+				trimLog(Utils.sortByComparator(doc.getCollectionTermWeight(),
+						true), 256)));
+
 		return doc;
 	}
 
@@ -146,7 +165,7 @@ public class RocchioClassifier {
 		String bestClass = null;
 		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
 				.entrySet()) {
-			double score = RocchioClassifier.angleCosineSimilarity(
+			double score = RocchioClassifier.cosineSimilarity(
 					document.getCollectionTermWeight(), clazz.getValue());
 			if (score > bestScore) {
 				bestScore = score;
@@ -157,7 +176,7 @@ public class RocchioClassifier {
 		return new ClassificationResult(bestClass, bestScore);
 	}
 
-	public static double angleCosineSimilarity(Map<String, MutableDouble> wd,
+	public static double cosineSimilarity(Map<String, MutableDouble> wd,
 			Map<String, MutableDouble> wq) {
 		if (wd.size() != wq.size())
 			throw new IllegalArgumentException(

@@ -46,7 +46,8 @@ public class MorphItLemmatizer {
 	}
 
 	public MorphItData getLemma(String word, PoSType pos) {
-		Collection<MorphItData> lemmaList = lemmas.get(word.toLowerCase());
+		// Original case first
+		Collection<MorphItData> lemmaList = lemmas.get(word);
 		MorphItData lemma = null;
 		if (pos == PoSType.DEFAULT) {
 			lemma = findLemmaByPoS(lemmaList, PoSType.NOUN);
@@ -54,6 +55,17 @@ public class MorphItLemmatizer {
 				lemma = findLemmaByPoS(lemmaList, PoSType.ALL);
 		} else
 			lemma = findLemmaByPoS(lemmaList, pos);
+
+		// Try also with lowercase
+		if (lemma == null) {
+			lemmaList = lemmas.get(word.toLowerCase());
+			if (pos == PoSType.DEFAULT) {
+				lemma = findLemmaByPoS(lemmaList, PoSType.NOUN);
+				if (lemma == null)
+					lemma = findLemmaByPoS(lemmaList, PoSType.ALL);
+			} else
+				lemma = findLemmaByPoS(lemmaList, pos);
+		}
 
 		return lemma;
 	}

@@ -12,11 +12,13 @@ public class Utils {
 
 	public static String fileToText(File file) throws FileNotFoundException {
 		Scanner sc = null;
-		try {
+		try {			
 			sc = new Scanner(file);
 			StringBuilder textBuilder = new StringBuilder();
-			while (sc.hasNextLine())
+			while (sc.hasNextLine()) {
 				textBuilder.append(sc.nextLine());
+				textBuilder.append(" ");
+			}
 			return textBuilder.toString();
 		} finally {
 			sc.close();

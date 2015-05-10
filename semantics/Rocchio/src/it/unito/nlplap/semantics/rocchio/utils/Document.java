@@ -1,7 +1,5 @@
 package it.unito.nlplap.semantics.rocchio.utils;
 
-import it.unito.nlplap.semantics.rocchio.RocchioClassificationBenchmark;
-
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -18,6 +16,7 @@ public class Document {
 	private Map<String, MutableInt> termCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableInt> collectionTermCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableDouble> collectionTermFrequency = new HashMap<String, MutableDouble>();
+	private Map<String, MutableDouble> collectionTermWeight = new HashMap<String, MutableDouble>();
 
 	public Document(String name, String path, String text, List<String> terms,
 			String category) {
@@ -90,7 +89,12 @@ public class Document {
 	}
 
 	public Map<String, MutableDouble> getCollectionTermWeight() {
-		return collectionTermFrequency;
+		return collectionTermWeight;
+	}
+
+	public void setCollectionTermWeight(
+			Map<String, MutableDouble> collectionTermWeight) {
+		this.collectionTermWeight = collectionTermWeight;
 	}
 
 	public List<String> getTerms() {

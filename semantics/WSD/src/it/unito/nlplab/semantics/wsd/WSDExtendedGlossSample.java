@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
@@ -27,6 +28,8 @@ public class WSDExtendedGlossSample {
 			.getLogger(WSDExtendedGlossSample.class);
 
 	public static void main(String[] args) throws Exception {
+
+		Locale language = Locale.ITALIAN;
 
 		String wordA = "pianta";
 		List<String> contextsA = Arrays
@@ -51,25 +54,24 @@ public class WSDExtendedGlossSample {
 
 		for (String context : contexts) {
 
-			System.out
-					.println(String
-							.format("\nBest sense for word '%s' in context '%s':\n\t%s\n\n",
-									word,
-									context,
-									getBestSenseWithExtendedLeskAlgorithm(word,
-											context, senses)));
+			System.out.println(String.format(
+					"\nBest sense for word '%s' in context '%s':\n\t%s\n\n",
+					word,
+					context,
+					getBestSenseWithExtendedLeskAlgorithm(word, context,
+							senses, language)));
 		}
 	}
 
 	private static ExtendedSense getBestSenseWithExtendedLeskAlgorithm(
-			String searchWord, String context, List<ExtendedSense> senses)
-			throws Exception {
+			String searchWord, String context, List<ExtendedSense> senses,
+			Locale language) throws Exception {
 
 		int maxOverlap = 0;
 		ExtendedSense bestSense = null;
 		for (ExtendedSense sense : senses) {
 			int overlap = getOverlap(sense,
-					FeatureVectorUtils.getLemmas(context));
+					FeatureVectorUtils.getLemmas(context, language), language);
 
 			LOG.info(String
 					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, overlap=%d, sense=%s",
@@ -85,14 +87,15 @@ public class WSDExtendedGlossSample {
 	}
 
 	private static int getOverlap(ExtendedSense sense,
-			List<String> contextLemmas) throws Exception {
+			List<String> contextLemmas, Locale language) throws Exception {
 		int overlap = 0;
 
 		Map<String, String> senseWords = new HashMap<String, String>();
 
 		for (String gloss : sense.getGlosses()) {
 			// senseWords.clear();
-			for (String senseWord : FeatureVectorUtils.getLemmas(gloss)) {
+			for (String senseWord : FeatureVectorUtils.getLemmas(gloss,
+					language)) {
 				senseWords.put(senseWord, null);
 			}
 			// overlap += getOverlap(contextLemmas, senseWords);
@@ -100,7 +103,8 @@ public class WSDExtendedGlossSample {
 
 		// senseWords.clear();
 		for (String example : sense.getExamples()) {
-			for (String exampleWord : FeatureVectorUtils.getLemmas(example)) {
+			for (String exampleWord : FeatureVectorUtils.getLemmas(example,
+					language)) {
 				senseWords.put(exampleWord, null);
 			}
 		}
@@ -109,7 +113,8 @@ public class WSDExtendedGlossSample {
 		for (Sense rs : sense.getRelatedSenses()) {
 			for (String example : rs.getExamples()) {
 				// senseWords.clear();
-				for (String exampleWord : FeatureVectorUtils.getLemmas(example)) {
+				for (String exampleWord : FeatureVectorUtils.getLemmas(example,
+						language)) {
 					senseWords.put(exampleWord, null);
 				}
 				// overlap += getOverlap(contextLemmas, senseWords);

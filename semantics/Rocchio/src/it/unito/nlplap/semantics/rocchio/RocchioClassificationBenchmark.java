@@ -35,14 +35,14 @@ public class RocchioClassificationBenchmark {
 		if (ita) {
 			docDirPath = DOCUMENT_DIR_PATH_IT;
 			docLang = DOCUMENTS_LANGUAGE_IT;
-			docDir = new File(docDirPath);
-			dataSet = loadDocs(docDir, docLang);
+
 		} else {
 			docDirPath = DOCUMENT_DIR_PATH_EN;
 			docLang = DOCUMENTS_LANGUAGE_EN;
-			docDir = new File(docDirPath);
-			dataSet = loadDocsInSubdirs(docDir, docLang);
 		}
+
+		docDir = new File(docDirPath);
+		dataSet = loadDocsInSubdirs(docDir, docLang);
 
 		double testsetRatio = 0.10;
 
@@ -51,7 +51,7 @@ public class RocchioClassificationBenchmark {
 
 		datasetSplit(dataSet, testsetRatio, trainingSet, testSet);
 
-		RocchioClassifier rc = new RocchioClassifier(trainingSet, 5);
+		RocchioClassifier rc = new RocchioClassifier(trainingSet, 4);
 
 		// Classify docs
 		int correctCount = 0;
@@ -123,10 +123,11 @@ public class RocchioClassificationBenchmark {
 			throws Exception {
 		List<Document> documents = new ArrayList<Document>();
 
-		int limit = -400;
+		// int limit = -400;
+		int i = 0;
 		for (File dir : docDir.listFiles()) {
-			if (limit > 10)
-				break;
+			// if (limit > 10)
+			// break;
 
 			if (dir.isDirectory()) {
 				String category = dir.getName();
@@ -134,12 +135,15 @@ public class RocchioClassificationBenchmark {
 				for (File file : dir.listFiles()) {
 					if (file.isFile() && file.getName().indexOf(".") != 0
 							&& file.length() > 0) {
-						limit++;
+						i++;
 
 						String text = Utils.fileToText(file);
 						documents.add(new Document(file.getName(), file
 								.getAbsolutePath(), text, FeatureVectorUtils
 								.getLemmas(text, locale), category));
+
+						LOG.info(String.format("Loading doc %d, title '%s'", i,
+								file.getName()));
 					}
 				}
 			}
