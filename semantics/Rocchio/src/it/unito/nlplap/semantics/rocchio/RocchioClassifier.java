@@ -62,7 +62,7 @@ public class RocchioClassifier {
 			term.getValue().setValue(
 					Math.log(documentCount / term.getValue().getValue()));
 		}
-		LOG.info(String.format("Training: Total IDF='%d', idf=[%s]",
+		LOG.debug(String.format("Training: Total IDF='%d', idf=[%s]",
 				idf.size(), Utils.sortByComparator(idf, true)));
 
 		// Extract collection terms (feature vector)
@@ -74,16 +74,18 @@ public class RocchioClassifier {
 		featureVector = it.unito.nlplap.semantics.rocchio.utils.Utils
 				.clone(terms);
 
-		LOG.info(String.format("Training: Total terms='%d', terms=[%s]",
+		LOG.debug(String.format("Training: Total terms='%d', terms=[%s]",
 				terms.size(), terms));
 
 		LOG.info("Training: Computing documents features...");
 		// For each document, extract term frequency
+		int i = 0;
 		for (Document doc : documents) {
-
-			LOG.info(String.format(
-					"Training: Extracting features of document '%s'",
-					doc.getName()));
+			i++;
+			LOG.info(String
+					.format("Training: Extracting features of document '%s' - %d/%d - %d %%",
+							doc.getName(), i, documentCount,
+							(int) (i * 100 / documentCount)));
 
 			doc = computeDocumentFeatures(doc, idf);
 		}
@@ -95,7 +97,7 @@ public class RocchioClassifier {
 				terms);
 		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
 				.entrySet()) {
-			LOG.info(String.format(
+			LOG.debug(String.format(
 					"Rocchio Class '%s' features=[%s]",
 					clazz.getKey(),
 					trimLog(Utils.sortByComparator(clazz.getValue(), true), 256)));
@@ -131,9 +133,9 @@ public class RocchioClassifier {
 		doc.setCollectionTermWeight(it.unito.nlplap.semantics.rocchio.utils.Utils
 				.clone(doc.getCollectionTermFrequency()));
 
-		LOG.info(String.format("Document '%s' termCount=[%s]", doc.getName(),
+		LOG.debug(String.format("Document '%s' termCount=[%s]", doc.getName(),
 				trimLog(Utils.sortByComparator(doc.getTermCount(), true), 256)));
-		LOG.info(String.format(
+		LOG.debug(String.format(
 				"Document '%s' termFrequency=[%s]",
 				doc.getName(),
 				trimLog(Utils.sortByComparator(
@@ -146,7 +148,7 @@ public class RocchioClassifier {
 						term.getValue().getValue()
 								* idf.get(term.getKey()).getValue());
 		}
-		LOG.info(String.format(
+		LOG.debug(String.format(
 				"Document '%s' termWeight=[%s]",
 				doc.getName(),
 				trimLog(Utils.sortByComparator(doc.getCollectionTermWeight(),

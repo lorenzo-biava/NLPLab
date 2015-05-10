@@ -94,6 +94,10 @@ public class RocchioClassificationBenchmark {
 
 	public static List<Document> loadDocs(File docDir, Locale locale)
 			throws Exception {
+		LOG.info(String.format(
+				"Loading docs from folder '%s' and language '%s'",
+				docDir.getAbsolutePath(), locale.getLanguage()));
+
 		List<Document> documents = new ArrayList<Document>();
 
 		int limit = -200;
@@ -121,6 +125,10 @@ public class RocchioClassificationBenchmark {
 
 	public static List<Document> loadDocsInSubdirs(File docDir, Locale locale)
 			throws Exception {
+		LOG.info(String.format(
+				"Loading docs from folder '%s' and language '%s'",
+				docDir.getAbsolutePath(), locale.getLanguage()));
+
 		List<Document> documents = new ArrayList<Document>();
 
 		// int limit = -400;
@@ -142,8 +150,8 @@ public class RocchioClassificationBenchmark {
 								.getAbsolutePath(), text, FeatureVectorUtils
 								.getLemmas(text, locale), category));
 
-						LOG.info(String.format("Loading doc %d, title '%s'", i,
-								file.getName()));
+						LOG.debug(String.format("Loading doc %d, title '%s'",
+								i, file.getName()));
 					}
 				}
 			}
