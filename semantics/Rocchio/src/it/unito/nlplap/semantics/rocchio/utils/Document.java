@@ -114,7 +114,7 @@ public class Document {
 				if (t != null)
 					t.increment();
 				else
-					getTermCount().put(term, new MutableInt(1));
+					getTermCount().put(term.intern(), new MutableInt(1));
 			}
 		}
 	}
