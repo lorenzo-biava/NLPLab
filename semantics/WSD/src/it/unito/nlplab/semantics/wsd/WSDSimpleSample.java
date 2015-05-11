@@ -1,5 +1,7 @@
 package it.unito.nlplab.semantics.wsd;
 
+import it.unito.nlplab.semantics.textcleaner.StopWordOnlyTextCleaner;
+import it.unito.nlplab.semantics.textcleaner.TextCleaner;
 import it.unito.nlplap.semantics.utils.StopWordsTrimmer;
 
 import java.io.FileNotFoundException;
@@ -48,37 +50,31 @@ public class WSDSimpleSample {
 
 		RiWordNet wn = new RiWordNet(wordNetDir);
 
-		// creates a StanfordCoreNLP object, with POS tagging, lemmatization,
-		// NER, parsing, and coreference resolution
-		Properties props = new Properties();
-		props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
-		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+		// TextCleaner cleaner = new DummyTextCleaner();
+		TextCleaner cleaner = new StopWordOnlyTextCleaner(language);
+		// TextCleaner cleaner = new StemmingTextCleaner(language);
+		// TextCleaner cleaner = new LemmatizingTextCleaner(language);
 
-		TextCleaner cleaner = new RiWordnetTextCleaner(language, wn);
-
-		// Process input
-		List<String> cleanContexts = new ArrayList<String>();
-		for (String ctx : contexts) {
-			cleanContexts.add(cleaner.cleanText(ctx));
-		}
+		String cleanWord = cleaner.cleanText(searchWord);
 
 		// Get words' senses
 
-		for (String context : cleanContexts) {
+		for (String context : contexts) {
 
 			// String pos = getPoSForLemma(searchWord, context, pipeline);
 			// if (pos == null)
 			// throw new RuntimeException("No pos for lemma " + searchWord);
 
-			String pos = RiTa.getPosTags(searchWord, true)[0];
+			String pos = RiTa.getPosTags(cleanWord, true)[0];
 
-			Sense bestSense = getBestSenseWithLeskAlgorithm(searchWord,
-					context, pos, language, wn, cleaner);
+			Sense bestSense = getBestSenseWithLeskAlgorithm(cleanWord, context,
+					pos, language, wn, cleaner);
 
 			System.out
 					.println(String
-							.format("Word '%s' (with PoS %s) has the following sense in context '%s':\n '%s'\n",
-									searchWord, pos, context, bestSense));
+							.format("Word '%s' (was '%s') (with PoS %s) has the following sense in context '%s':\n '%s'\n",
+									cleanWord, searchWord, pos, context,
+									bestSense));
 
 			System.out.println("----\t\t----\n");
 		}
@@ -90,24 +86,10 @@ public class WSDSimpleSample {
 			TextCleaner cleaner) throws Exception {
 		List<Sense> senses = getSenses(searchWord, pos, wn);
 
-		// Clean senses
-		for (Sense sense : senses) {
-			List<String> glosses = new ArrayList<String>();
-			for (String gloss : sense.getGlosses())
-				glosses.add(cleaner.cleanText(gloss));
-
-			sense.setGlosses(glosses);
-
-			List<String> examples = new ArrayList<String>();
-			for (String example : sense.getExamples())
-				examples.add(cleaner.cleanText(example));
-			sense.setExamples(examples);
-		}
-
 		int maxOverlap = 0;
 		Sense bestSense = null;
 		for (Sense sense : senses) {
-			int overlap = getOverlap(sense, context);
+			int overlap = getOverlap(sense, context, cleaner);
 
 			LOG.info(String
 					.format("[getBestSenseWithLeskAlgorithm] - word=%s, overlap=%d, sense=%s",
@@ -141,27 +123,31 @@ public class WSDSimpleSample {
 	//
 	// }
 
-	private static int getOverlap(Sense sense, String context) {
+	private static int getOverlap(Sense sense, String context,
+			TextCleaner cleaner) throws Exception {
 		int overlap = 0;
 
 		Map<String, String> senseWords = new HashMap<String, String>();
-		for (String senseWord : RiTa.tokenize(sense.getGloss())) {
+		for (String senseWord : RiTa.tokenize(cleaner.cleanText(sense
+				.getGloss()))) {
 			senseWords.put(senseWord, null);
 		}
 		for (String example : sense.getExamples()) {
-			for (String exampleWord : RiTa.tokenize(example)) {
+			for (String exampleWord : RiTa.tokenize(cleaner.cleanText(example))) {
 				senseWords.put(exampleWord, null);
 			}
 		}
 
-		for (String contextWord : RiTa.tokenize(context)) {
+		String cleanContext = cleaner.cleanText(context);
+		for (String contextWord : RiTa.tokenize(cleanContext)) {
 			if (senseWords.containsKey(contextWord))
 				overlap++;
 		}
 
 		LOG.info(String.format(
 				"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
-				overlap, context, StringUtils.join(senseWords.keySet(), ", ")));
+				overlap, cleanContext,
+				StringUtils.join(senseWords.keySet(), ", ")));
 
 		return overlap;
 	}
