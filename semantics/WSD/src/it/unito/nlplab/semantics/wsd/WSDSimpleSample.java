@@ -1,10 +1,19 @@
 package it.unito.nlplab.semantics.wsd;
 
+import it.unito.nlplap.semantics.utils.StopWordsTrimmer;
+
+import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
+
+import org.apache.commons.lang.StringUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import rita.RiTa;
 import rita.RiWordNet;
@@ -19,29 +28,41 @@ import edu.stanford.nlp.util.CoreMap;
 
 public class WSDSimpleSample {
 
+	private static final Logger LOG = LogManager
+			.getLogger(WSDExtendedGlossSample.class);
+
 	public static final String WORDNET_DEFAULT_DIR = "/usr/local/WordNet-3.0";
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 
 		String wordNetDir = System.getenv("WNHOME");
 		if (wordNetDir == null)
 			wordNetDir = WORDNET_DEFAULT_DIR;
+
+		Locale language = Locale.ENGLISH;
 
 		List<String> contexts = Arrays.asList(new String[] {
 				"The house was burnt to ashes while the owner returned.",
 				"This table is made of ash wood." });
 		String searchWord = "ash";
 
-		// Get word's senses
 		RiWordNet wn = new RiWordNet(wordNetDir);
 
 		// creates a StanfordCoreNLP object, with POS tagging, lemmatization,
 		// NER, parsing, and coreference resolution
-//		Properties props = new Properties();
-//		props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
-//		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+		Properties props = new Properties();
+		props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
+		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
-		for (String context : contexts) {
+		// Process input
+		List<String> cleanContexts = new ArrayList<String>();
+		for (String ctx : contexts) {
+			cleanContexts.add(cleanText(ctx, language, pipeline));
+		}
+
+		// Get words' senses
+
+		for (String context : cleanContexts) {
 
 			// String pos = getPoSForLemma(searchWord, context, pipeline);
 			// if (pos == null)
@@ -49,7 +70,8 @@ public class WSDSimpleSample {
 
 			String pos = RiTa.getPosTags(searchWord, true)[0];
 
-			Sense bestSense = getBestSenseWithLeskAlgorithm(searchWord, context, pos, wn);
+			Sense bestSense = getBestSenseWithLeskAlgorithm(searchWord,
+					context, pos, language, wn, pipeline);
 
 			System.out
 					.println(String
@@ -61,24 +83,62 @@ public class WSDSimpleSample {
 
 	}
 
-	private static Sense getBestSenseWithLeskAlgorithm(String searchWord, String context, String pos,
-			RiWordNet wn) {		
+	private static Sense getBestSenseWithLeskAlgorithm(String searchWord,
+			String context, String pos, Locale language, RiWordNet wn,
+			StanfordCoreNLP pipeline) throws Exception {
 		List<Sense> senses = getSenses(searchWord, pos, wn);
+
+		// Clean senses
+		for (Sense sense : senses) {
+			List<String> glosses = new ArrayList<String>();
+			for (String gloss : sense.getGlosses())
+				glosses.add(cleanText(gloss, language, pipeline));
+
+			sense.setGlosses(glosses);
+
+			List<String> examples = new ArrayList<String>();
+			for (String example : sense.getExamples())
+				examples.add(cleanText(example, language, pipeline));
+			sense.setExamples(examples);
+		}
 
 		int maxOverlap = 0;
 		Sense bestSense = null;
 		for (Sense sense : senses) {
 			int overlap = getOverlap(sense, context);
 
+			LOG.info(String
+					.format("[getBestSenseWithLeskAlgorithm] - word=%s, overlap=%d, sense=%s",
+							searchWord, overlap, sense));
+
 			if (overlap > maxOverlap) {
 				maxOverlap = overlap;
 				bestSense = sense;
 			}
+
 		}
-		
+
 		return bestSense;
 	}
-	
+
+	private static String cleanText(String text, Locale language,
+			StanfordCoreNLP pipeline) throws Exception {
+		StopWordsTrimmer swt = new StopWordsTrimmer(language);
+
+		// Trim stopwords
+		List<String> terms = swt.trim(swt.tokenize(swt.normalize(text)));
+
+		// Stemming
+		// for (String term : terms)
+		// term = wn.getStems(term, wn.getBestPos(term))[0];
+
+		// Lemmatizing
+		terms = getLemmas(StringUtils.join(terms, " "), pipeline);
+
+		return StringUtils.join(terms, " ");
+
+	}
+
 	private static int getOverlap(Sense sense, String context) {
 		int overlap = 0;
 
@@ -96,6 +156,10 @@ public class WSDSimpleSample {
 			if (senseWords.containsKey(contextWord))
 				overlap++;
 		}
+
+		LOG.info(String.format(
+				"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
+				overlap, context, StringUtils.join(senseWords.keySet(), ", ")));
 
 		return overlap;
 	}
@@ -143,5 +207,36 @@ public class WSDSimpleSample {
 		}
 
 		return null;
+	}
+
+	private static List<String> getLemmas(String text, StanfordCoreNLP pipeline) {
+
+		List<String> lemmas = new ArrayList<String>();
+
+		// create an empty Annotation just with the given text
+		Annotation document = new Annotation(text);
+
+		// run all Annotators on this text
+		pipeline.annotate(document);
+
+		// these are all the sentences in this document
+		// a CoreMap is essentially a Map that uses class objects as keys and
+		// has values with custom types
+		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
+
+		for (CoreMap sentence : sentences) {
+			// traversing the words in the current sentence
+			// a CoreLabel is a CoreMap with additional token-specific methods
+			for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
+				// // this is the text of the token
+				// String word = token.get(TextAnnotation.class);
+				// this is the POS tag of the token
+				String pos = token.get(PartOfSpeechAnnotation.class);
+				String lemma = token.get(LemmaAnnotation.class);
+				lemmas.add(lemma);
+			}
+		}
+
+		return lemmas;
 	}
 }
