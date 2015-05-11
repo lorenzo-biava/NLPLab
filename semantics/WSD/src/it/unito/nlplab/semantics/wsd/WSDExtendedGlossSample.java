@@ -15,11 +15,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import rita.RiTa;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
 import edu.stanford.nlp.util.StringUtils;
 
 public class WSDExtendedGlossSample {
@@ -47,11 +49,37 @@ public class WSDExtendedGlossSample {
 
 		String word = wordA;
 		List<String> contexts = contextsA;
+		
+		//TextCleaner cleaner = new StanfordCoreNLPTextCleaner(language);
+		TextCleaner cleaner = new DummyTextCleaner();
+
+		// Process input
+		List<String> cleanContexts = new ArrayList<String>();
+		for (String ctx : contexts) {
+			cleanContexts.add(cleaner.cleanText(ctx));
+		}
 
 		String pos = RiTa.getPosTags(word, true)[0];
 
 		List<ExtendedSense> senses = getExtendedSenses(word, pos);
 
+		// Clean senses
+		for (ExtendedSense sense : senses) {
+			List<String> glosses = new ArrayList<String>();
+			for (String gloss : sense.getGlosses())
+				glosses.add(cleaner.cleanText(gloss));
+
+			sense.setGlosses(glosses);
+
+			List<String> examples = new ArrayList<String>();
+			for (String example : sense.getExamples())
+				examples.add(cleaner.cleanText(example));
+			sense.setExamples(examples);
+			
+			//TODO: Related senses
+		}
+
+		
 		for (String context : contexts) {
 
 			System.out.println(String.format(

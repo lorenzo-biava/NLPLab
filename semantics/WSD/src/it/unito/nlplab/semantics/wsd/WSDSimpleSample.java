@@ -54,10 +54,12 @@ public class WSDSimpleSample {
 		props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
 		StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
 
+		TextCleaner cleaner = new RiWordnetTextCleaner(language, wn);
+
 		// Process input
 		List<String> cleanContexts = new ArrayList<String>();
 		for (String ctx : contexts) {
-			cleanContexts.add(cleanText(ctx, language, pipeline));
+			cleanContexts.add(cleaner.cleanText(ctx));
 		}
 
 		// Get words' senses
@@ -71,7 +73,7 @@ public class WSDSimpleSample {
 			String pos = RiTa.getPosTags(searchWord, true)[0];
 
 			Sense bestSense = getBestSenseWithLeskAlgorithm(searchWord,
-					context, pos, language, wn, pipeline);
+					context, pos, language, wn, cleaner);
 
 			System.out
 					.println(String
@@ -85,20 +87,20 @@ public class WSDSimpleSample {
 
 	private static Sense getBestSenseWithLeskAlgorithm(String searchWord,
 			String context, String pos, Locale language, RiWordNet wn,
-			StanfordCoreNLP pipeline) throws Exception {
+			TextCleaner cleaner) throws Exception {
 		List<Sense> senses = getSenses(searchWord, pos, wn);
 
 		// Clean senses
 		for (Sense sense : senses) {
 			List<String> glosses = new ArrayList<String>();
 			for (String gloss : sense.getGlosses())
-				glosses.add(cleanText(gloss, language, pipeline));
+				glosses.add(cleaner.cleanText(gloss));
 
 			sense.setGlosses(glosses);
 
 			List<String> examples = new ArrayList<String>();
 			for (String example : sense.getExamples())
-				examples.add(cleanText(example, language, pipeline));
+				examples.add(cleaner.cleanText(example));
 			sense.setExamples(examples);
 		}
 
@@ -121,23 +123,23 @@ public class WSDSimpleSample {
 		return bestSense;
 	}
 
-	private static String cleanText(String text, Locale language,
-			StanfordCoreNLP pipeline) throws Exception {
-		StopWordsTrimmer swt = new StopWordsTrimmer(language);
-
-		// Trim stopwords
-		List<String> terms = swt.trim(swt.tokenize(swt.normalize(text)));
-
-		// Stemming
-		// for (String term : terms)
-		// term = wn.getStems(term, wn.getBestPos(term))[0];
-
-		// Lemmatizing
-		terms = getLemmas(StringUtils.join(terms, " "), pipeline);
-
-		return StringUtils.join(terms, " ");
-
-	}
+	// private static String cleanText(String text, Locale language,
+	// StanfordCoreNLP pipeline) throws Exception {
+	// StopWordsTrimmer swt = new StopWordsTrimmer(language);
+	//
+	// // Trim stopwords
+	// List<String> terms = swt.trim(swt.tokenize(swt.normalize(text)));
+	//
+	// // Stemming
+	// // for (String term : terms)
+	// // term = wn.getStems(term, wn.getBestPos(term))[0];
+	//
+	// // Lemmatizing
+	// terms = getLemmas(StringUtils.join(terms, " "), pipeline);
+	//
+	// return StringUtils.join(terms, " ");
+	//
+	// }
 
 	private static int getOverlap(Sense sense, String context) {
 		int overlap = 0;
