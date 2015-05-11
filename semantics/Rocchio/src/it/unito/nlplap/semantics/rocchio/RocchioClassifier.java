@@ -114,7 +114,7 @@ public class RocchioClassifier {
 	}
 
 	public Document computeDocumentFeatures(Document doc) {
-		return computeDocumentFeatures(doc, null);
+		return computeDocumentFeatures(doc, idf);
 	}
 
 	public Document computeDocumentFeatures(Document doc,

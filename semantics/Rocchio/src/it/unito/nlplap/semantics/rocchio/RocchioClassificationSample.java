@@ -14,12 +14,29 @@ public class RocchioClassificationSample {
 	private static final Logger LOG = LogManager
 			.getLogger(RocchioClassificationSample.class);
 
-	private static final String DOCUMENT_DIR_PATH = "data/docs_200";
+	private static final String DOCUMENT_DIR_PATH_IT = "data/docs_200";
+	private static final Locale DOCUMENTS_LANGUAGE_IT = Locale.ITALIAN;
+	private static final String DOCUMENT_DIR_PATH_EN = "data/20_NGs_400";
+	private static final Locale DOCUMENTS_LANGUAGE_EN = Locale.ENGLISH;
 
 	public static void main(String[] args) throws Exception {
 
+		boolean ita = false;
+
+		String docDirPath;
+		Locale docLang;
+
+		if (ita) {
+			docDirPath = DOCUMENT_DIR_PATH_IT;
+			docLang = DOCUMENTS_LANGUAGE_IT;
+
+		} else {
+			docDirPath = DOCUMENT_DIR_PATH_EN;
+			docLang = DOCUMENTS_LANGUAGE_EN;
+		}
+		
 		List<Document> documents = RocchioClassificationBenchmark
-				.loadDocsInSubdirs(new File(DOCUMENT_DIR_PATH), Locale.ITALIAN);
+				.loadDocsInSubdirs(new File(docDirPath), docLang);
 
 		RocchioClassifier rocchio = new RocchioClassifier(documents, 0);
 
