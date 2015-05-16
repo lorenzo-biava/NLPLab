@@ -7,6 +7,8 @@ import it.uniroma1.lcl.babelnet.data.BabelExample;
 import it.uniroma1.lcl.babelnet.data.BabelGloss;
 import it.uniroma1.lcl.babelnet.data.BabelPOS;
 import it.uniroma1.lcl.jlt.util.Language;
+import it.unito.nlplab.semantics.textcleaner.LemmatizingTextCleaner;
+import it.unito.nlplab.semantics.textcleaner.TextCleaner;
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
 
 import java.util.ArrayList;
@@ -48,34 +50,55 @@ public class WSDExtendedGlossSample {
 		String word = wordA;
 		List<String> contexts = contextsA;
 
+		// TextCleaner cleaner = new DummyTextCleaner();
+		// TextCleaner cleaner = new StopWordOnlyTextCleaner(language);
+		// TextCleaner cleaner = new StemmingTextCleaner(language);
+		TextCleaner cleaner = new LemmatizingTextCleaner(language);
+
 		String pos = RiTa.getPosTags(word, true)[0];
 
-		List<ExtendedSense> senses = getExtendedSenses(word, pos);
+		String cleanWord = cleaner.cleanText(word);
+
+		List<ExtendedSense> senses = getExtendedSenses(cleanWord, pos);
 
 		for (String context : contexts) {
 
-			System.out.println(String.format(
-					"\nBest sense for word '%s' in context '%s':\n\t%s\n\n",
-					word,
-					context,
-					getBestSenseWithExtendedLeskAlgorithm(word, context,
-							senses, language)));
+			// Process input
+			LOG.info(String
+					.format("\n\nBest sense for word '%s' (was '%s') in context '%s':\n\t%s\n\n",
+							cleanWord,
+							word,
+							context,
+							getBestSenseWithExtendedLeskAlgorithm(cleanWord,
+									context, senses, language, cleaner)));
 		}
 	}
 
+	/**
+	 * 
+	 * @param searchWord
+	 * @param context
+	 * @param senses
+	 * @param language
+	 * @param cleaner
+	 * @return
+	 * @throws Exception
+	 */
 	private static ExtendedSense getBestSenseWithExtendedLeskAlgorithm(
 			String searchWord, String context, List<ExtendedSense> senses,
-			Locale language) throws Exception {
+			Locale language, TextCleaner cleaner) throws Exception {
 
 		int maxOverlap = 0;
 		ExtendedSense bestSense = null;
+		String cleanContext = cleaner.cleanText(context);
 		for (ExtendedSense sense : senses) {
 			int overlap = getOverlap(sense,
-					FeatureVectorUtils.getLemmas(context, language), language);
+					FeatureVectorUtils.getLemmas(cleanContext, language),
+					language, cleaner);
 
 			LOG.info(String
-					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, overlap=%d, sense=%s",
-							searchWord, overlap, sense));
+					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, overlap=%d, context=%s, sense=%s",
+							searchWord, overlap, cleanContext, sense));
 
 			if (overlap > maxOverlap) {
 				maxOverlap = overlap;
@@ -87,15 +110,16 @@ public class WSDExtendedGlossSample {
 	}
 
 	private static int getOverlap(ExtendedSense sense,
-			List<String> contextLemmas, Locale language) throws Exception {
+			List<String> contextLemmas, Locale language, TextCleaner cleaner)
+			throws Exception {
 		int overlap = 0;
 
 		Map<String, String> senseWords = new HashMap<String, String>();
 
 		for (String gloss : sense.getGlosses()) {
 			// senseWords.clear();
-			for (String senseWord : FeatureVectorUtils.getLemmas(gloss,
-					language)) {
+			for (String senseWord : FeatureVectorUtils.getLemmas(
+					cleaner.cleanText(gloss), language)) {
 				senseWords.put(senseWord, null);
 			}
 			// overlap += getOverlap(contextLemmas, senseWords);
@@ -103,8 +127,8 @@ public class WSDExtendedGlossSample {
 
 		// senseWords.clear();
 		for (String example : sense.getExamples()) {
-			for (String exampleWord : FeatureVectorUtils.getLemmas(example,
-					language)) {
+			for (String exampleWord : FeatureVectorUtils.getLemmas(
+					cleaner.cleanText(example), language)) {
 				senseWords.put(exampleWord, null);
 			}
 		}
@@ -113,8 +137,8 @@ public class WSDExtendedGlossSample {
 		for (Sense rs : sense.getRelatedSenses()) {
 			for (String example : rs.getExamples()) {
 				// senseWords.clear();
-				for (String exampleWord : FeatureVectorUtils.getLemmas(example,
-						language)) {
+				for (String exampleWord : FeatureVectorUtils.getLemmas(
+						cleaner.cleanText(example), language)) {
 					senseWords.put(exampleWord, null);
 				}
 				// overlap += getOverlap(contextLemmas, senseWords);
