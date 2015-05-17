@@ -1,5 +1,6 @@
 package it.unito.nlplap.syntax.yoddish;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
@@ -8,8 +9,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.ling.Word;
 import edu.stanford.nlp.pipeline.Annotation;
 import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.trees.LabeledScoredTreeNode;
 import edu.stanford.nlp.trees.Tree;
 import edu.stanford.nlp.trees.TreeCoreAnnotations.TreeAnnotation;
 import edu.stanford.nlp.util.CoreMap;
@@ -25,6 +29,8 @@ public class YoddishSample {
 		text += " " + "Young Skywalker has become twisted by the Dark Side.";
 		text += " "
 				+ "The boy you trained, he is gone, consumed by Darth Vader.";
+		// gone è letto come verbo e non come aggettivo
+		
 		text += " " + "There are always two, no more.";
 		text += " " + "The mind of a child is truly wonderful.";
 		text += " " + "You still have much to learn.";
@@ -40,7 +46,7 @@ public class YoddishSample {
 
 		String yoddish = toYoddish(text, language);
 
-		LOG.info(String.format("Sentence '%s', in Yoddish is:\n\t%s", text,
+		LOG.info(String.format("Sentence '%s', in Yoddish is:\n%s", text,
 				yoddish));
 	}
 
@@ -72,40 +78,70 @@ public class YoddishSample {
 		// and
 		// has values with custom types
 		List<CoreMap> sentences = document.get(SentencesAnnotation.class);
-
 		for (CoreMap sentence : sentences) {
 			Tree tree = sentence.get(TreeAnnotation.class);
+
 			yoddishVisitTree(tree, 0);
-			yoddish += StringUtils.join(tree.yieldWords(), " ") + "\n";
+			yoddish += rebuildSentence(tree.yieldWords()) + "\n";
 		}
 
 		return yoddish;
+	}
+
+	protected static String rebuildSentence(List<Word> words) {
+		StringBuilder sentence = new StringBuilder();
+		int i = 0;
+		for (Word word : words) {
+			if (word.word().matches("[,.:;!?]"))
+				sentence.append(word.word());
+			else if (i == 0)
+				sentence.append(StringUtils.capitalize(word.word()));
+			else
+				sentence.append(" " + word.word());
+			i++;
+		}
+
+		return sentence.toString();
 	}
 
 	protected static Tree yoddishVisitTree(Tree t, int depth) {
 		if (t.isEmpty())
 			return t;
 
-		String tabs = "";
-		for (int i = 0; i < depth; i++)
-			tabs += "\t";
-
-		if (t.isLeaf()) {
-			// System.out.println(tabs + t.nodeString());
-		} else {
-			// System.out.println(tabs + t.label());
-
+		if (!t.isLeaf()) {
+			// NP [*] VP -> O NP [*] VP
 			try {
 				Tree[] children = t.children();
+				int npIndex = -1;
 				// if (isTag(children[0], "NP"))
-				for (int i = 0; i < children.length; i++)
-					if (isTag(children[i], "VP")) {
-						Tree op = findObjectPhraseAndRemove(children[1]);
-						if (op != null)
-							t.addChild(0, op);
+				for (int i = 0; i < children.length; i++) {
+					if (isTag(children[i], "NP")) {
+						npIndex = i;
 					}
+
+					if (isTag(children[i], "VP")) {
+						if (npIndex == -1)
+							if ((i != 0 || depth > 1))
+								continue;
+							else
+								npIndex = 0;
+
+						Tree[] op = findObjectPhraseAndRemove(children[i], t);
+						if (op != null && op.length > 0) {
+							// TODO: Add comma after Object ?
+							CoreLabel l = new CoreLabel();
+							l.setValue(",");
+							t.addChild(npIndex, new LabeledScoredTreeNode(l));
+
+							for (int c = op.length - 1; c >= 0; c--)
+								t.addChild(npIndex, op[c]);
+						}
+
+						// Reset for other NP-VP sequence
+						npIndex = -1;
+					}
+				}
 			} catch (Exception e) {
-				e = e;
 			}
 
 			for (Tree c : t.children())
@@ -115,29 +151,80 @@ public class YoddishSample {
 		return t;
 	}
 
-	protected static Tree findObjectPhraseAndRemove(Tree t) {
+	protected static Tree[] findObjectPhraseAndRemove(Tree t, Tree parent) {
 		if (t.isLeaf())
 			return null;
 
 		if (!isTag(t, "VP"))
 			return null;
 
-		int i = 0;
+		// VP -> [VB* - skip] (* - object)
+		List<Tree> object = new ArrayList<Tree>();
+		List<Integer> toRemove = new ArrayList<Integer>();
+		int i = -1;
 		for (Tree c : t.children()) {
-			if (isTag(c, "NP")) {
-				t.removeChild(i);
-				return c;
-			}
 			i++;
+
+			// Skip Verb types, if they are not the only part of the phrase and
+			// following another VBx
+			if (isTag(c, "VB(\\w)+"))
+				if (t.children().length > 1 || !hasVBxBefore(t, parent)) {
+					continue;
+				}
+
+			// Nested VP
+			if (isTag(c, "VP")) {
+				return findObjectPhraseAndRemove(c, t);
+			}
+
+			// Stop sentence
+			if (isTag(c, "[,.!?]"))
+				break;
+
+			// Hold the following children
+			object.add(c);
+			toRemove.add(i);
 		}
 
-		return t;
+		// If no nodes remain in the tree, just return the tree and remove from
+		// father
+		if (object.size() == t.children().length) {
+			parent.removeChild(parent.objectIndexOf(t));
+			return new Tree[] { t };
+		}
+
+		// Remove selected children from current tree
+		int c = 0;
+		for (Integer index : toRemove) {
+			t.removeChild(index - c);
+			c++;
+		}
+		// for(Tree c: object)
+		// t.removeChild(c.objectIndexOf(t));
+
+		Tree[] obj = new Tree[object.size()];
+		return object.toArray(obj);
 	}
 
+	protected static boolean hasVBxBefore(Tree t, Tree parent) {
+		int i = parent.objectIndexOf(t);
+		if (i > 0)
+			return parent.getChild(i - 1).value().matches("VB(\\w)+");
+
+		return false;
+	}
+
+	/**
+	 * 
+	 * @param t
+	 * @param pos
+	 *            regex
+	 * @return
+	 */
 	protected static boolean isTag(Tree t, String pos) {
 		if (t.isLeaf())
 			return false;
 
-		return t.label().value().equals(pos);
+		return t.label().value().matches(pos);
 	}
 }
