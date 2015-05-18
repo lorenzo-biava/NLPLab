@@ -44,6 +44,7 @@ def corpus2trees(text):
 
         try:
             t = Tree.fromstring(rp)
+            t.chomsky_normal_form()
             trees.append(t)
         except ValueError:
             logging.error('Malformed parse: "%s"' % rp)
@@ -109,3 +110,4 @@ class PCFGViterbiParser(nltk.ViterbiParser):
             self._grammar._calculate_indexes()
 
         return super(PCFGViterbiParser, self).parse(tokens)
+
