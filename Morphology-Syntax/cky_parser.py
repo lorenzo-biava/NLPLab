@@ -1,6 +1,6 @@
 import collections
 import nltk
-
+import copy
 
 def build(CNF):
     G = collections.defaultdict(list)
@@ -52,7 +52,7 @@ class CKYParser:
     # Uses CKY Algorithm (see Jurasky and Martin Chapter 13.4, 2nd edition)
     #
     def nbest_parse(self, tokens):
-        self._grammar.check_coverage(tokens)
+        #self._grammar.check_coverage(tokens)
 
         tokensCount = len(tokens);
 
@@ -63,10 +63,15 @@ class CKYParser:
 
             # Match terminals
             #
-            productions = self._grammar.productions(rhs=tokens[endIndex - 1])
+            token_pos=tokens[endIndex - 1][1];
+            token_word=tokens[endIndex - 1][0];
+            productions = self._grammar.productions(rhs=token_pos)
+
             trees = []
             for production in productions:
-                trees.append(nltk.Tree(production, [production.rhs()]))
+                prod = nltk.ProbabilisticProduction(production.lhs(), [token_word], prob=production.prob())
+                #prod.rhs=token_word
+                trees.append(nltk.Tree(prod, [prod.rhs()]))
 
             table[endIndex - 1][endIndex] = trees;
 
@@ -114,8 +119,10 @@ def treeProb(tree):
 
 
 def extractHeadTree(tree):
+    # if type(tree) is tuple:
+    #     return nltk.Tree(tree[0], [])
     if tree.height() <= 2:
-        return nltk.Tree(tree.label(), [])
+        return nltk.Tree(tree.label().lhs(), tree.label().rhs())
 
     children = list()
     for t in tree:
