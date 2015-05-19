@@ -6,10 +6,11 @@ import pcfg_parser
 import pos_tagging
 import codecs
 import pickle
+import pcky_parser
 
 logging.basicConfig(level=logging.DEBUG)
-# sentence = 'Il diritto è sospeso.'
-sentence = 'Ciascun panettiere può disporre del suo diritto.'
+#sentence = 'Una frase complessa è costituita da molte parole'
+sentence = 'Ciascun Pluto può disporre del suo diritto.'
 pcfg_training_set_path = "data\\it\\tut-clean-simple.penn.txt"
 
 file = codecs.open(pcfg_training_set_path, 'r', 'utf-8')
@@ -21,7 +22,7 @@ if (enable_caching and os.path.isfile(pcfg_cache_file)):
     with open(pcfg_cache_file, 'rb') as f:
         pcfg = pickle.load(f)
 else:
-    pcfg = pcfg_parser.extract_pcfg(file, root='S', terminal_are_tags=True)
+    pcfg = pcfg_parser.extract_pcfg(file, root='S', terminal_are_tags=False)
     with open(pcfg_cache_file, 'wb') as f:
         pickle.dump(pcfg, f)
 
@@ -44,61 +45,35 @@ if not os.path.exists("tmp"):
 #    print(tree)
 #    tree.draw()
 
-import cky_parser
-
-CNF = (
-    ('S', ('NP', 'VP')),
-    ('S', ('VP', 'NP')),
-    ('VP', 'time'),
-    ('VP', 'flies'),
-    ('VP', 'like'),
-    ('VP', 'arrow'),
-    ('VP', ('Verb', 'NP')),
-    ('VP', ('VP', 'PP')),
-    ('NP', 'time'),
-    ('NP', 'flies'),
-    ('NP', 'arrow'),
-    ('NP', ('Det', 'NP')),
-    ('NP', ('Noun', 'NP')),
-    ('NP', ('NP', 'PP')),
-    ('PP', ('Preposition', 'NP')),
-    ('Noun', 'time'),
-    ('Noun', 'flies'),
-    ('Noun', 'arrow'),
-    ('Verb', 'time'),
-    ('Verb', 'flies'),
-    ('Verb', 'like'),
-    ('Verb', 'arrow'),
-    ('Preposition', 'like'),
-    ('Det', 'an'),
-)
-# G = cky_parser.build(CNF)
-# T = cky_parser.cky(G, ('time', 'flies', 'like', 'an', 'arrow'))
-# print(T)
-
-parser = cky_parser.CKYParser(pcfg)
+parser = pcky_parser.PCKYParser(pcfg,None)
 
 tokens = nltk.tokenize.wordpunct_tokenize(sentence)
 
 _, _, tagged = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll").get_sentence_tags(words=tokens)
-tokens = [tuple(row) for row in tagged]
-#tokens = [row[1] for row in tagged]
+tagged = [tuple(row) for row in tagged]
+#tags = [row[1] for row in tagged]
 
-parses = parser.nbest_parse(tokens)
+parses = parser.nbest_parse(tokens, tagged, debug=True)
 
-prob = 0
 for parse in parses:
-    tree_prob=cky_parser.treeProb(parse)
-    print("Tree probability: %g" % tree_prob)
-    print(cky_parser.extractHeadTree(parse))
-    print("")
-    if(tree_prob>prob):
-        prob=tree_prob
-        max_tree=parse
+    print("Input sentence='%s'" % sentence)
+    print("Tagged=%s" % tagged)
+    print(parse.pprint())
+    print(parse.prob())
 
-print("")
-print("Best tree:")
-print("Tree probability: %g" % prob)
-print(cky_parser.extractHeadTree(max_tree))
-max_tree.draw()
-cky_parser.extractHeadTree(max_tree).draw()
+# prob = 0
+# for parse in parses:
+#     tree_prob=cky_parser.treeProb(parse)
+#     print("Tree probability: %g" % tree_prob)
+#     print(cky_parser.extractHeadTree(parse))
+#     print("")
+#     if(tree_prob>prob):
+#         prob=tree_prob
+#         max_tree=parse
+
+# print("")
+# print("Best tree:")
+# print("Tree probability: %g" % prob)
+# print(cky_parser.extractHeadTree(max_tree))
+# max_tree.draw()
+# cky_parser.extractHeadTree(max_tree).draw()
