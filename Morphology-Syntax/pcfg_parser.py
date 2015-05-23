@@ -31,14 +31,20 @@ def convert_to_universal_tags(text):
     return text
 
 
-def corpus2trees(text, terminal_are_tags=False):
+def corpus2trees(content, terminal_are_tags=False):
     """ Parse the corpus and return a list of Trees """
-    text = convert_to_universal_tags(text)
 
-    rawparses = text.split("\n")
+    if not isinstance(content, list):
+        content = convert_to_universal_tags(content)
+        raw_parses = content.split("\n")
+    else:
+        for entry in content:
+            entry = convert_to_universal_tags(entry)
+        raw_parses = content
+
     trees = []
 
-    for rp in rawparses:
+    for rp in raw_parses:
         if not rp.strip():
             continue
 
@@ -53,16 +59,18 @@ def corpus2trees(text, terminal_are_tags=False):
 
     return trees
 
+
 def remove_word_terminals(tree):
-    i=-1
+    i = -1
     for t in tree:
-        i+=1
-        if(t.height() >= 3)   :
+        i += 1
+        if (t.height() >= 3):
             remove_word_terminals(t)
         else:
-            t2=t[0] #t.label()
+            t2 = t[0]  # t.label()
             t.clear()
             t.insert(0, t.label())
+
 
 def trees2productions(trees):
     """ Transform list of Trees to a list of productions """
@@ -71,13 +79,16 @@ def trees2productions(trees):
         productions += t.productions()
     return productions
 
+
 def extract_pcfg(content, root, terminal_are_tags=False):
-    if not isinstance(content, str):
-        content = content.read()
+    if not isinstance(content, list):
+        if not isinstance(content, str):
+            content = content.read()
 
     trees = corpus2trees(content, terminal_are_tags)
     productions = trees2productions(trees)
     return nltk.grammar.induce_pcfg(nltk.grammar.Nonterminal(root), productions)
+
 
 import nltk
 

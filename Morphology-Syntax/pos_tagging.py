@@ -103,6 +103,8 @@ class MostFrequentTagger(PoSTagger):
     def fromFile(path):
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+        if 'PROPN' not in corpus_tags:
+            corpus_tags.append('PROPN')
         return MostFrequentTagger(corpus, corpus_tags)
 
 import pickle

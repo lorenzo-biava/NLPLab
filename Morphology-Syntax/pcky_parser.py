@@ -48,7 +48,7 @@ class PCKYParser:
     # Returns a list of possible parses
     #   Uses CKY Algorithm (see Jurasky and Martin Chapter 13.4, 2nd edition)
     #
-    def nbest_parse(self, tokens, tagged=None, debug = False):
+    def nbest_parse(self, tokens, tagged=None, tree_head='TOP', debug = False):
         tokensCount = len(tokens);
 
         if tagged is None:
@@ -160,7 +160,7 @@ class PCKYParser:
 
 
         if mostLikelyTree != None:
-            mostLikelyTree = nltk.tree.ProbabilisticTree("TOP", [tree], prob = tree.prob())
+            mostLikelyTree = nltk.tree.ProbabilisticTree(tree_head, [tree], prob = tree.prob())
             mostLikelyTree.un_chomsky_normal_form(expandUnary=True) # de-compress CNF
             return [mostLikelyTree]
         else:
