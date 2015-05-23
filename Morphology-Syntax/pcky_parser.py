@@ -133,7 +133,7 @@ class PCKYParser:
         # Create LUT of topProductions
         topProductions = {}
         for prod in self._grammar.productions():
-            if prod.lhs().symbol() == "TOP":
+            if prod.lhs().symbol() == tree_head:
                 topProductions[prod.rhs()[0].symbol()] = prod
 
 
