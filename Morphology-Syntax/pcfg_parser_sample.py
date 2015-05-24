@@ -31,8 +31,8 @@ print(pcfg.productions())
 if not os.path.exists("tmp"):
     os.makedirs("tmp")
 
-    with open('tmp/it.pcfg', 'w') as outfile:
-        print(pcfg.production(), file=outfile)
+with open('tmp/it.pcfg', 'w') as outfile:
+    print(pcfg.productions(), file=outfile)
 #
 # trees = viterbi_parser.parse(
 # nltk.word_tokenize(sentence))

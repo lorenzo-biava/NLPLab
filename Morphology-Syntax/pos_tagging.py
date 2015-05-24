@@ -145,6 +145,14 @@ class HMMTagger(PoSTagger):
         #         pickle.dump(self._to_pickle_order_list(self.probTagCons), f)
 
     @staticmethod
+    def fromFile(path):
+        corpus, _ = pos_tagging_utils.load_corpus(path)
+        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+        if 'PROPN' not in corpus_tags:
+            corpus_tags.append('PROPN')
+        return HMMTagger(corpus, corpus_tags)
+
+    @staticmethod
     def _to_pickle_order_list(obj):
         return dict([(i, v) for i, v in enumerate(obj)])
 
