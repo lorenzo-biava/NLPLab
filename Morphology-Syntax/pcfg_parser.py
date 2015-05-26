@@ -30,6 +30,19 @@ def convert_to_universal_tags(text):
         text = text.replace('(' + repl_old, '(' + rep_new)
     return text
 
+def prune_tree(tree):
+    if tree.height() < 3:
+        return tree.label() == '-NONE-'
+
+    to_remove = list()
+    for t in tree:
+        if prune_tree(t):
+            to_remove.append(t)
+
+    [tree.remove(t) for t in to_remove]
+
+    if len(tree) < 1:
+        return True
 
 def corpus2trees(content, terminal_are_tags=False, convert_to_universal_tags=False):
     """ Parse the corpus and return a list of Trees """
@@ -104,7 +117,7 @@ class PCFGViterbiParser(nltk.ViterbiParser):
         super(PCFGViterbiParser, self).__init__(grammar, trace)
 
     @staticmethod
-    def _preprocess(tokens):
+    def _preprocòess(tokens):
         replacements = {
             "(": "-LBR-",
             ")": "-RBR-",

@@ -55,7 +55,7 @@ def test_sentence(i, entry, kwargs):
     # logger.debug("Tagged: %s" % tagged)
     # logger.debug("Original tree: ")
     # if logger.isEnabledFor(logging.DEBUG):
-    #     logger.debug(t)
+    # logger.debug(t)
 
     tagged = [tuple(row) for row in tagged]
 
@@ -69,7 +69,7 @@ def test_sentence(i, entry, kwargs):
         for parse in parses:
             # logger.debug("Parsing tree: ")
             # if logger.isEnabledFor(logging.DEBUG):
-            #     logger.debug(parse)
+            # logger.debug(parse)
             # logger.debug("Probability: %g" % parse.prob())
             # logger.debug("Same tree: %s" % parse == t)
             parse = (' '.join(parse.pformat().split()))
@@ -84,6 +84,55 @@ def nltk_tree_flat_pprint(tree):
     return ' '.join(tree.pformat().split())
 
 
+def clean_dataset(dataset, prune_tree=False):
+    """
+        Convert dataset tags
+    :param dataset:
+    :return:
+    """
+    tmp_dataset = list()
+    for entry in dataset:
+        entry = pcfg_parser.convert_to_universal_tags(entry)
+        # WARNING !! Labeling tree ROOT (because input treebank has no label for the root, but PCKY needs one)
+        entry = "(ROOT%s" % entry[1:]
+        t = nltk.Tree.fromstring(entry)
+
+        if prune_tree:
+            # Prune tree (remove -NONE- subtrees)
+            pcfg_parser.prune_tree(t)
+
+        tmp_dataset.append(nltk_tree_flat_pprint(t))
+    return tmp_dataset
+
+
+def from_chomsky_normal_form(dataset):
+    """
+        De-Convert dataset from CNF !
+    :param dataset:
+    :return:
+    """
+    tmp_dataset = list()
+    for entry in dataset:
+        t = nltk.Tree.fromstring(entry)
+        t.un_chomsky_normal_form()
+        tmp_dataset.append(nltk_tree_flat_pprint(t))
+    return tmp_dataset
+
+
+def to_chomsky_normal_form(dataset):
+    """
+        Convert dataset from CNF !
+    :param dataset:
+    :return:
+    """
+    tmp_dataset = list()
+    for entry in dataset:
+        t = nltk.Tree.fromstring(entry)
+        t.chomsky_normal_form()
+        tmp_dataset.append(nltk_tree_flat_pprint(t))
+    return tmp_dataset
+
+
 if __name__ == '__main__':
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     logger = logging.getLogger('PCFG-Parser-Benchmark')
@@ -96,29 +145,14 @@ if __name__ == '__main__':
     logger.info("Loading dataset")
     dataset = load_corpus(pcfg_dataset_path)
     # Convert dataset tags
-    tmp_dataset = list()
-    for entry in dataset:
-        entry = pcfg_parser.convert_to_universal_tags(entry)
-        # WARNING !! Labeling tree ROOT (because input treebank has no label for the root, but PCKY needs one)
-        entry = "(ROOT%s" % entry[1:]
-        tmp_dataset.append(entry)
-    dataset = tmp_dataset
-    result_set = list()
+    dataset = clean_dataset(dataset, prune_tree=True)
 
     # Split dataset
     logger.info("Splitting dataset")
     testset_ratio = 0.1
     training_set, test_set = split_dataset(dataset, testset_ratio)
-
-    # Convert test set to CNF !
-    # tmp_dataset = list()
-    # for entry in test_set:
-    # t = nltk.Tree.fromstring(entry)
-    # t.chomsky_normal_form()
-    #     tmp_dataset.append(nltk_tree_flat_pprint(t))
-    # test_set = tmp_dataset
-
     # test_set = training_set
+
     logger.info("Dataset size: %d" % len(dataset))
     logger.info("Training set size: %d" % len(training_set))
     logger.info("Test set ratio: %d%%, size: %d" % (math.floor(testset_ratio * 100), len(test_set)))
@@ -134,8 +168,12 @@ if __name__ == '__main__':
     parser = pcky_parser.PCKYParser(pcfg, None)
 
     logger.info("Loading PoS Tagger")
-    pos_tagger = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll")
-    #pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
+    pos_tagger = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll",
+                                                         special_words={'-LRB-': '-LRB-', '-RRB-': '-RRB-',
+                                                                        '-LSB-': '-LRB-', '-RSB-': '-RRB-',
+                                                                        '-': '.', ':': '.', ';': '.', '!': '.',
+                                                                        '?': '.'})
+    # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
 
     # Test entries in Test set
     logger.info("Testing sentences")
@@ -148,13 +186,15 @@ if __name__ == '__main__':
 
     started = time.time()
 
+    result_set = list()
     # Multiproc
     if parallel:
         # logger = multiprocessing.log_to_stderr()
         # logger.setLevel(multiprocessing.SUBDEBUG)
         p_tasks = parallel_task.ParallelTasks(label="PCFG", progress_interval=2)  # , processes=4)
         p_tasks.log_level(logging.INFO)
-        result_set = p_tasks.apply_async_with_callback(test_set, test_sentence, pos_tagger=pos_tagger, parser=parser)
+        result_set = p_tasks.apply_async_with_callback(test_set, test_sentence, chunks=10, pos_tagger=pos_tagger,
+                                                       parser=parser)
 
     # Old
     else:
@@ -202,17 +242,9 @@ if __name__ == '__main__':
                         correct += 1
 
     found = 0
-    tmp = list()
     for entry in result_set:
         if entry != '':
             found += 1
-            # Restore from CNF !
-            t = nltk.Tree.fromstring(entry)
-            t.un_chomsky_normal_form()
-            tmp.append(nltk_tree_flat_pprint(t))
-        else:
-            tmp.append(entry)
-    #result_set=tmp
 
     logger.info("Parse found: %d/%d (%d%%)" % (found, test_set_size, math.floor(found / test_set_size * 100)))
     logger.info("Parse correct: %d/%d (%d%%)" % (correct, test_set_size, math.floor(correct / test_set_size * 100)))
@@ -233,4 +265,3 @@ if __name__ == '__main__':
 
     # Invoke Evalb
     print(call(["tools\\evalb", "-p", "tools\\default.prm", "tmp\\parse.gld", "tmp\\parse.tst"]))
-
