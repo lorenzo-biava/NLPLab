@@ -117,7 +117,7 @@ class PCFGViterbiParser(nltk.ViterbiParser):
         super(PCFGViterbiParser, self).__init__(grammar, trace)
 
     @staticmethod
-    def _preprocòess(tokens):
+    def _preprocess(tokens):
         replacements = {
             "(": "-LBR-",
             ")": "-RBR-",

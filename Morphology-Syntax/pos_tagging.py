@@ -29,6 +29,11 @@ class PoSTagger:
             # if tag in ('.', ','):
             return tags['PUNCT']
 
+    default_special_words = {'-LRB-': '-LRB-', '-RRB-': '-RRB-',
+                             '-LSB-': '-LRB-', '-RSB-': '-RRB-',
+                             '-': '.', ':': '.', ';': '.', '!': '.',
+                             '?': '.'}
+
 
 class MostFrequentTagger(PoSTagger):
     _opt_words_ignore_case = 0
@@ -144,7 +149,7 @@ class HMMTagger(PoSTagger):
         # if os.path.isfile(corpus_cache_file):
         # with open(corpus_cache_file, 'rb') as f:
         # self.pos_tags = self._from_pickle_order_list(pickle.load(f))
-        #         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
+        # self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
         #         self.countTag = self._from_pickle_order_list(pickle.load(f))
         #         self.probTagStart = self._from_pickle_order_list(pickle.load(f))
         #         self.probTagCons = self._from_pickle_order_list(pickle.load(f))
@@ -312,7 +317,7 @@ class HMMTagger(PoSTagger):
         # # Word in corpus is in words
         # if tag[0] in words_dict:
         # if self._opt_words_ignore_case:
-        #                 word_index = words_dict[tag[0].lower()]
+        # word_index = words_dict[tag[0].lower()]
         #             else:
         #                 word_index = words_dict[tag[0]]
         #

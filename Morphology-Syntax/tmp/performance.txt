@@ -1,0 +1,33 @@
+use_treebank_as_tagging_corpus = False
+use_training_set_as_test_set = True
+
+    -- All --
+    Number of sentence        =    988
+    Number of Error sentence  =      0
+    Number of Skip  sentence  =    428
+    Number of Valid sentence  =    560
+    Bracketing Recall         =  24.43
+    Bracketing Precision      =  25.18
+    Bracketing FMeasure       =  24.80
+    Complete match            =   3.21
+    Average crossing          =  10.73
+    No crossing               =  10.89
+    2 or less crossing        =  28.21
+    Tagging accuracy          =  85.20
+
+use_treebank_as_tagging_corpus = False
+use_training_set_as_test_set = True
+
+    -- All --
+    Number of sentence        =    988
+    Number of Error sentence  =      0
+    Number of Skip  sentence  =    509
+    Number of Valid sentence  =    479
+    Bracketing Recall         =  30.74
+    Bracketing Precision      =  33.72
+    Bracketing FMeasure       =  32.16
+    Complete match            =   4.18
+    Average crossing          =   7.48
+    No crossing               =  13.78
+    2 or less crossing        =  36.95
+    Tagging accuracy          =  92.11

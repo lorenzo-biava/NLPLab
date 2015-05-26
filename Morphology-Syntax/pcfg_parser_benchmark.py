@@ -9,6 +9,7 @@ import pcfg_parser
 import pcky_parser
 import pos_tagging
 import parallel_task
+import pos_tagging_utils
 
 
 def load_corpus(path):
@@ -75,7 +76,7 @@ def test_sentence(i, entry, kwargs):
             parse = (' '.join(parse.pformat().split()))
             break
             # if (parse == t):
-            #     correct += 1
+            # correct += 1
 
     return {"index": i, "value": parse}
 
@@ -133,7 +134,24 @@ def to_chomsky_normal_form(dataset):
     return tmp_dataset
 
 
+def get_tagger_corpus_from_treebank(dataset):
+    corpus = []
+    for entry in dataset:
+        t = nltk.Tree.fromstring(entry)
+        sentence = []
+        for tag in t.pos():
+            sentence.append(tag)
+        corpus.append(sentence)
+    return corpus
+
+
 if __name__ == '__main__':
+
+    # Execution options
+    use_treebank_as_tagging_corpus = True
+    use_training_set_as_test_set = True
+    parallel = True
+
     logging.basicConfig(stream=sys.stdout, level=logging.INFO)
     logger = logging.getLogger('PCFG-Parser-Benchmark')
 
@@ -151,11 +169,17 @@ if __name__ == '__main__':
     logger.info("Splitting dataset")
     testset_ratio = 0.1
     training_set, test_set = split_dataset(dataset, testset_ratio)
-    # test_set = training_set
+    if use_training_set_as_test_set:
+        test_set = training_set
 
     logger.info("Dataset size: %d" % len(dataset))
     logger.info("Training set size: %d" % len(training_set))
     logger.info("Test set ratio: %d%%, size: %d" % (math.floor(testset_ratio * 100), len(test_set)))
+
+    special_words = {'-LRB-': '-LRB-', '-RRB-': '-RRB-',
+                     '-LSB-': '-LRB-', '-RSB-': '-RRB-',
+                     '-': '.', ':': '.', ';': '.', '!': '.',
+                     '?': '.'}
 
     # Extract PCFG from Training set
     logger.info("Extracting PCFG")
@@ -168,12 +192,14 @@ if __name__ == '__main__':
     parser = pcky_parser.PCKYParser(pcfg, None)
 
     logger.info("Loading PoS Tagger")
-    pos_tagger = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll",
-                                                         special_words={'-LRB-': '-LRB-', '-RRB-': '-RRB-',
-                                                                        '-LSB-': '-LRB-', '-RSB-': '-RRB-',
-                                                                        '-': '.', ':': '.', ';': '.', '!': '.',
-                                                                        '?': '.'})
-    # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
+
+    if use_treebank_as_tagging_corpus == True:
+        tagger_corpus = get_tagger_corpus_from_treebank(dataset)
+        corpus_tags = pos_tagging_utils.get_corpus_tags(tagger_corpus)
+        pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags, special_words=pos_tagging.PoSTagger.default_special_words)
+    else:
+        pos_tagger = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll", special_words=pos_tagging.PoSTagger.default_special_words)
+        # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
 
     # Test entries in Test set
     logger.info("Testing sentences")
@@ -181,8 +207,6 @@ if __name__ == '__main__':
     found = 0
     correct = 0
     test_set_size = len(test_set)
-
-    parallel = True
 
     started = time.time()
 
