@@ -29,12 +29,30 @@ class PoSTagger:
             # if tag in ('.', ','):
             return tags['PUNCT']
 
+    default_special_words = {'-LRB-': '-LRB-', '-RRB-': '-RRB-',
+                             '-LSB-': '-LRB-', '-RSB-': '-RRB-',
+                             '-': '.', ':': '.', ';': '.', '!': '.',
+                             '?': '.'}
+
 
 class MostFrequentTagger(PoSTagger):
     _opt_words_ignore_case = 0
+    _special_words = dict()
 
-    def __init__(self, corpus, pos_tags):
+    def __init__(self, corpus, pos_tags, special_words=None):
         self.pos_tags = pos_tags
+
+        if special_words is not None:
+            self._special_words = special_words
+            # Add special words tags if not present
+            for word, tag in special_words.items():
+                if tag not in self.pos_tags:
+                    self.pos_tags.append(tag)
+
+        # WARNING: Force PROPN for Proper Nouns rule
+        if 'PROPN' not in self.pos_tags:
+            self.pos_tags.append('PROPN')
+
         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
         self.corpus = corpus
 
@@ -83,10 +101,15 @@ class MostFrequentTagger(PoSTagger):
             # Get most frequent tag
             tags[i] = [k for k, v in word_entry.items() if v == max(word_entry.values())][0]
 
-            # Unknown words are defaulted to NOUN or PROPN
-            # TODO: Should check if such PoS exists
-            if (word_entry[tags[i]] == 0):
-                if(word.isupper()):
+            # Unknown words
+            if word_entry[tags[i]] == 0:
+                # Check if it's a special word
+                if word in self._special_words:
+                    tags[i] = self._special_words[word]
+
+                # Unknown words are defaulted to NOUN or PROPN
+                # WARNING: PROPN tag is forced during loading
+                elif word.isupper():
                     tags[i] = 'PROPN'
                 else:
                     tags[i] = 'NOUN'
@@ -100,10 +123,11 @@ class MostFrequentTagger(PoSTagger):
         return words, tags_indexes, [list(a) for a in zip(words, tags)]
 
     @staticmethod
-    def fromFile(path):
+    def fromFile(path, **kwargs):
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-        return MostFrequentTagger(corpus, corpus_tags)
+        return MostFrequentTagger(corpus, corpus_tags, **kwargs)
+
 
 import pickle
 import os.path
@@ -124,8 +148,8 @@ class HMMTagger(PoSTagger):
         # Load cached corpus probabilities if existent
         # if os.path.isfile(corpus_cache_file):
         # with open(corpus_cache_file, 'rb') as f:
-        #         self.pos_tags = self._from_pickle_order_list(pickle.load(f))
-        #         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
+        # self.pos_tags = self._from_pickle_order_list(pickle.load(f))
+        # self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
         #         self.countTag = self._from_pickle_order_list(pickle.load(f))
         #         self.probTagStart = self._from_pickle_order_list(pickle.load(f))
         #         self.probTagCons = self._from_pickle_order_list(pickle.load(f))
@@ -141,6 +165,14 @@ class HMMTagger(PoSTagger):
         #         pickle.dump(self._to_pickle_order_list(self.countTag), f)
         #         pickle.dump(self._to_pickle_order_list(self.probTagStart), f)
         #         pickle.dump(self._to_pickle_order_list(self.probTagCons), f)
+
+    @staticmethod
+    def fromFile(path):
+        corpus, _ = pos_tagging_utils.load_corpus(path)
+        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+        if 'PROPN' not in corpus_tags:
+            corpus_tags.append('PROPN')
+        return HMMTagger(corpus, corpus_tags)
 
     @staticmethod
     def _to_pickle_order_list(obj):
@@ -284,8 +316,8 @@ class HMMTagger(PoSTagger):
         # for tag in sentence:
         # # Word in corpus is in words
         # if tag[0] in words_dict:
-        #             if self._opt_words_ignore_case:
-        #                 word_index = words_dict[tag[0].lower()]
+        # if self._opt_words_ignore_case:
+        # word_index = words_dict[tag[0].lower()]
         #             else:
         #                 word_index = words_dict[tag[0]]
         #
