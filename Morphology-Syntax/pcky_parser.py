@@ -1,202 +1,184 @@
 import re
 import nltk
 import nltk.treetransforms
-from nltk.draw.tree import draw_trees
-from collections import OrderedDict
 
-# Enable this for additional details
-#
-debug = False
+"""
+Class implementing a Probabilistic CKY parsing algorithm
+"""
+
 
 class PCKYParser:
+    """
+    Probabilistic CKY parser implementation
+    """
 
-    # Default constructor, takes in Chomsky normalized grammar
-    #
-    def __init__(self, cnfGrammar, tagger):
-        self._grammar = cnfGrammar
+    def __init__(self, cnf_grammar, tagger):
+        """
+        Default constructor
+        :param cnf_grammar: Chomsky normalized grammar
+        :param tagger: a PoS Tagger (must provide method tags(tokens))
+        :return:
+        """
+        self._grammar = cnf_grammar
         self._tagger = tagger
 
         self._productionTable = {}
 
-        # Initialize LUT of RHS non-terminal pairs
-        for production in cnfGrammar.productions():
+        # Initialize Look-up Table of RHS non-terminal pairs
+        for production in cnf_grammar.productions():
             rhs = production.rhs()
-            rhsLen = len(rhs)
+            rhs_len = len(rhs)
 
-            # RHS Non-production pair detected
-            if rhsLen == 2:
+            # Check CNF
+            if rhs_len == 2:
                 key = (rhs[0].symbol(), rhs[1].symbol())
 
                 if key not in self._productionTable:
                     self._productionTable[key] = []
 
-                self._productionTable[key].append( production )
-            elif rhsLen > 2:
-                print(production)
-                print('ERROR: non-CNF grammar with multiple rules')
+                self._productionTable[key].append(production)
 
-    # Compare trees
-    #   Reverse sort by probability
-    #
-    def compare_tree(cls, x, y):
-        if x.prob() > y.prob(): return -1
-        elif x.prob() == y.prob(): return 0
-        else: return 1
+            # Non CNF production detected
+            elif rhs_len > 2:
+                raise ValueError('FATAL: non-CNF grammar detected, rule: %s' % production)
 
-    compare_tree = classmethod(compare_tree)
+    def get_parsing_trees(self, tokens, tagged=None, tree_head='TOP', debug=False):
+        """
+        Returns a list of possible parsing trees of the given sentence, ordered with highest probability first
+        :param tokens: a list of tokens representing the sentence to parse
+        :param tagged: [optional] list of (token, PoS tag) - not using the default PoS tagger
+        :param tree_head:  [optional] the Non-terminal for the head of the tree
+        :param debug: [optional] whether to enable debug logs
+        :return:
+        """
 
-    # Returns a list of possible parses
-    #   Uses CKY Algorithm (see Jurasky and Martin Chapter 13.4, 2nd edition)
-    #
-    def nbest_parse(self, tokens, tagged=None, tree_head='TOP', debug = False):
-        tokensCount = len(tokens);
+        tokens_count = len(tokens)
 
+        # Get tags from tagger if not provided
         if tagged is None:
-            tagged=self._tagger.tags(tokens)
+            tagged = self._tagger.tags(tokens)
 
-        table = [[None for endIndex in range(tokensCount + 1)] for startIndex in range(tokensCount)]
+        # Setup the table
+        table = [[None for end_index in range(tokens_count + 1)] for start_index in range(tokens_count)]
 
         # Look left-to-right
-        for endIndex in range(1, tokensCount + 1):
+        for end_index in range(1, tokens_count + 1):
 
             trees = []
 
-            # Match terminals using ngramTagger output (prob == 1)
-            #
-            token, tag = tagged[endIndex - 1]
+            # Match terminals using their tag (with prob == 1)
+            token, tag = tagged[end_index - 1]
             trees.append(nltk.ProbabilisticTree(tag, [token], prob=1.0))
 
-            # Match terminals using generated PCFG grammar (prob <  1)
-            #
-            productions = self._grammar.productions(rhs = tokens[endIndex-1])
+            # Match terminals using PCFG (with prob <  1)
+            productions = self._grammar.productions(rhs=tokens[end_index - 1])
 
+            # TODO: doc comment
             for production in productions:
-                if str(production.lhs()) != tag: trees.append( nltk.ProbabilisticTree(production.lhs().symbol(), [production.rhs()], prob=production.prob()) )
+                if str(production.lhs()) != tag:
+                    trees.append(
+                        nltk.ProbabilisticTree(production.lhs().symbol(), [production.rhs()], prob=production.prob()))
 
-            table[endIndex-1][endIndex] = trees;
+            table[end_index - 1][end_index] = trees
 
             if debug:
                 # Print matched POS
-                print(str(endIndex - 1) + " " + str(endIndex) + ": " + token + " ")
+                print(str(end_index - 1) + " " + str(end_index) + ": " + token + " ")
                 for tree in trees:
                     print(tree.label() + " ")
                 print()
 
-
             # Look bottom-to-top
-            for startIndex in range(endIndex - 2, -1, -1):
+            for start_index in range(end_index - 2, -1, -1):
 
-                trees = []
-
+                # TODO: doc comment
                 # A* Parser
-                mostLikelyTrees = {}
+                most_likely_trees = {}
 
                 # Iterate over possible split positions
-                for split in range(startIndex + 1, endIndex):
-                    leftTrees = table[startIndex][split]
-                    rightTrees = table[split][endIndex]
+                for split in range(start_index + 1, end_index):
+                    left_trees = table[start_index][split]
+                    right_trees = table[split][end_index]
 
-
-                    # Iterate through all posibile combination of trees
-                    for leftTree in leftTrees:
-                        for rightTree in rightTrees:
-                            key = (str(leftTree.label()), str(rightTree.label()))
+                    # Iterate through all possible combination of trees
+                    for left_tree in left_trees:
+                        for right_tree in right_trees:
+                            key = (str(left_tree.label()), str(right_tree.label()))
 
                             if key in self._productionTable:
 
                                 # Iterate over possible productions
                                 for production in self._productionTable[key]:
-                                    prob = leftTree.prob() * rightTree.prob()
+                                    prob = left_tree.prob() * right_tree.prob()
 
-                                    existingTree = None
-                                    if production.lhs().symbol() in mostLikelyTrees: existingTree = mostLikelyTrees[production.lhs().symbol()]
+                                    # TODO: doc comment
+                                    existing_tree = None
+                                    if production.lhs().symbol() in most_likely_trees:
+                                        existing_tree = most_likely_trees[production.lhs().symbol()]
 
-                                    if existingTree == None or prob > existingTree.prob():
-                                        mostLikelyTrees[production.lhs().symbol()] = nltk.ProbabilisticTree(production.lhs().symbol(), [leftTree, rightTree],
-                                                                     prob= prob)
+                                    if existing_tree is None or prob > existing_tree.prob():
+                                        most_likely_trees[production.lhs().symbol()] = nltk.ProbabilisticTree(
+                                            production.lhs().symbol(), [left_tree, right_tree],
+                                            prob=prob)
 
-                treesToKeep = mostLikelyTrees.values()
-                #treesToKeep.sort(cmp=PCKYParser.compare_tree) # Sort trees, with highest probabilities first
-                treesToKeep=sorted(treesToKeep, key=lambda t: t.prob(), reverse=True)
+                trees_to_keep = most_likely_trees.values()
+                # Sort by highest probability
+                trees_to_keep = sorted(trees_to_keep, key=lambda t: t.prob(), reverse=True)
 
+                # TODO: doc comment
                 # Prune all trees except the end node (we want to maximize our chances of finding the top node)
-                if not(startIndex == 0 and endIndex == tokensCount):
-                    treesToKeep = treesToKeep[0:20]
+                if not (start_index == 0 and end_index == tokens_count):
+                    trees_to_keep = trees_to_keep[0:20]
 
-                table[startIndex][endIndex] = treesToKeep
+                # TODO: doc comment
+                table[start_index][end_index] = trees_to_keep
 
                 if debug:
-                    print(str(startIndex) + " " + str(endIndex) + ": " + str(len(mostLikelyTrees)))
+                    print(str(start_index) + " " + str(end_index) + ": " + str(len(most_likely_trees)))
 
-        finalTrees = table[0][len(tokens)]
+        # TODO: doc comment
+        # Extract the final parsing trees from the top-right corner of the table
+        final_trees = table[0][len(tokens)]
 
-        # Create LUT of topProductions
-        topProductions = {}
+        # Keep only trees belonging to the grammar: matching the root non-terminal
+
+        # Create lookup table of root productions
+        root_productions = {}
         for prod in self._grammar.productions():
             if prod.lhs().symbol() == tree_head:
-                topProductions[prod.rhs()[0].symbol()] = prod
+                root_productions[prod.rhs()[0].symbol()] = prod
 
-
-        mostLikelyTree = None
-
-        # Match against top productions, tree should already be sorted
-        #   Keep in mind that they are already sorted with highest prob first
-        #
-        for tree in finalTrees:
-            if tree.label() in topProductions:
-                if debug: print("Matched top production")
-                mostLikelyTree = tree
-                break
-
-        # As backup, look for top Sentence nodes
-        #
-        if mostLikelyTree == None:
-            for tree in finalTrees:
-                # Look for sentence marker, which is not a markov smoothing tag
-                if re.match("^S[A-Z]*[^\|]*$", tree.label()) != None:
-                    if debug: print("Matched sentence node")
-                    mostLikelyTree = tree
-                    break
-
-
-        if mostLikelyTree != None:
-            mostLikelyTree = nltk.tree.ProbabilisticTree(tree_head, [tree], prob = tree.prob())
-            mostLikelyTree.un_chomsky_normal_form(expandUnary=True) # de-compress CNF
-            return [mostLikelyTree]
-        else:
-            return []
-
-if __name__ == '__main__':
-    import pickle
-    import sys
-
-    if (len(sys.argv) > 1):
-        # running from command line
-        sentencesFile = sys.__stdin__
-        grammarLocation = sys.argv[1]
-        ngramTaggerLocation = sys.argv[2]
-    else:
-        sentencesFile = open('sentences_23_short_tokenized')
-        grammarLocation = 'wsj_02-21_h2v1.pcfg'
-        ngramTaggerLocation = 'ngramTagger'
-
-    #load the pickled tagger & grammar
-    ngramTagger = pickle.load(open(ngramTaggerLocation,'rb'))
-    grammar = pickle.load(open(grammarLocation, 'rb'))
-
-    parser = PCKYParser(grammar, ngramTagger)
-
-    for sentence in sentencesFile:
-        if debug: print(sentence)
-        tokens = str.split(sentence)
-        parses = parser.nbest_parse(tokens, debug = debug)
-
-        if len(parses) == 0:
-            print()
-        else:
-            for parse in parses:
+        trees = []
+        # Match against root productions (trees are already sorted with highest probability)
+        for tree in final_trees:
+            if tree.label() in root_productions:
                 if debug:
-                    print(parse.pprint())
-                    print(parse.prob())
-                else:
-                    print(parse._pprint_flat(nodesep='', parens='()', quotes=False))
+                    print("Matched root production")
+                trees.append(tree)
+
+        if debug:
+            print("Total trees: %d" % len(trees))
+        return trees
+
+    def get_parsing_tree(self, tokens, tagged=None, tree_head='TOP', debug=False):
+        """
+        Returns the parsing tree, of the given sentence, with the highest probability
+        :param tokens: a list of tokens representing the sentence to parse
+        :param tagged: [optional] list of (token, PoS tag) - not using the default PoS tagger
+        :param tree_head:  [optional] the Non-terminal for the head of the tree
+        :param debug: [optional] whether to enable debug logs
+        :return:
+        """
+
+        trees = self.get_parsing_trees(tokens, tagged, tree_head, debug)
+
+        if len(trees) > 0:
+            tree = trees[0]
+            # Create the tree with given root non-terminal
+            most_likely_tree = nltk.tree.ProbabilisticTree(tree_head, [tree], prob=tree.prob())
+            # Un-CNF the tree
+            most_likely_tree.un_chomsky_normal_form()
+            return most_likely_tree
+        else:
+            # No parsing tree found !
+            return None
