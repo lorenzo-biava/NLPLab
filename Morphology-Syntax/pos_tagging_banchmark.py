@@ -29,36 +29,12 @@ def compare_sentence(tags, test_tags, bad_tags, tags_count=0, correct_tags_count
 
     return tags_count, correct_tags_count
 
-
-#corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
-#test_corpus_path = "E:\\DATI\\UTENTI\\BLN-MAIN\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
-corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-train.conll"
-test_corpus_path = "E:\\Users\\bln\\Downloads\\universal_treebanks_v2.0\\universal_treebanks_v2.0\\std\\it\\it-universal-test.conll"
-
-corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path)
-
-# IMPORTANT NOTE: Accuracy may vary depending by PoS tags order !
-#corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
-
-test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)
-
-hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
-hmm_tagger.opt_words_smoothing = 1
-hmm_tagger.opt_words_ignore_case = 0
-mf_tagger = MostFrequentTagger(corpus, corpus_tags)
-mf_tagger.opt_words_ignore_case = 0
-hmm_tags_count = 0
-hmm_bad_tags = []
-hmm_correct_tags_count = 0
-mf_tags_count = 0
-mf_bad_tags = []
-mf_correct_tags_count = 0
-
 def tagger_benchmark(results, id, tagger_name, tagger, corpus):
     tags_count = 0
     bad_tags = []
     correct_tags_count = 0
+
+    print('%s started tagging !' % tagger_name)
 
     start_time = time.time()
     PROGRESS_INTERVAL = 5
@@ -81,10 +57,33 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
                 #print(tags)
 
     print('{:s}: ENDED !'.format(tagger_name))
-    results[id] = (tags_count, correct_tags_count, bad_tags)
-
+    results[id] = {'tags_count': tags_count, 'correct_tags_count': correct_tags_count, 'bad_tags': bad_tags}
 
 if __name__ == '__main__':
+
+    corpus_path = "data\\it\\it-universal-train.conll"
+    test_corpus_path = "data\\it\\it-universal-test.conll"
+
+    corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path)#, tag_field_index=4)
+
+    # IMPORTANT NOTE: Accuracy may vary depending by PoS tags order !
+    #corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+    corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
+
+    test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)
+
+    hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
+    hmm_tagger.opt_words_smoothing = 1
+    hmm_tagger.opt_words_ignore_case = 0
+    mf_tagger = MostFrequentTagger(corpus, corpus_tags)
+    mf_tagger.opt_words_ignore_case = 0
+    hmm_tags_count = 0
+    hmm_bad_tags = []
+    hmm_correct_tags_count = 0
+    mf_tags_count = 0
+    mf_bad_tags = []
+    mf_correct_tags_count = 0
+
     manager = multiprocessing.Manager()
     results = manager.dict()
 
@@ -101,23 +100,22 @@ if __name__ == '__main__':
     proc_hmm.join()
     proc_mf.join()
 
-    print(results.items())
+    #print(results.items())
     print("HMMTagger:")
-    hmm_correct_tags_count = results[0][1]
-    hmm_tags_count = results[0][0]
-    print(hmm_correct_tags_count / hmm_tags_count)
-    print(len(results[0][2]))
-    print(results[0][2])
+    hmm_correct_tags_count = results[0]['correct_tags_count']
+    hmm_tags_count = results[0]['tags_count']
+    print('\tAccuracy: %.2f%%' % (hmm_correct_tags_count / hmm_tags_count * 100))
+    print('\tGood tags: %d, Bad Tags: %d' % (hmm_correct_tags_count, len(results[0]['bad_tags'])))
+    print('\tBad tags (correct, computed): %s' % results[0]['bad_tags'])
 
     print("MostFreguentTagger:")
-    mf_correct_tags_count = results[1][1]
-    mf_tags_count = results[1][0]
-    print(mf_correct_tags_count / mf_tags_count)
-    print(len(results[1][2]))
-    print(results[1][2])
+    mf_correct_tags_count = results[1]['correct_tags_count']
+    mf_tags_count = results[1]['tags_count']
+    print('\tAccuracy: %.2f%%' % (mf_correct_tags_count / mf_tags_count * 100))
+    print('\tGood tags: %d, Bad Tags: %d' % (mf_correct_tags_count, len(results[1]['bad_tags'])))
+    print('\tBad tags (correct, computed): %s' % results[1]['bad_tags'])
 
-    print("Total tags:")
-    print(mf_tags_count)
+    print("Total tags: %d" % mf_tags_count)
 
     elapsed_time = time.time() - start_time
-    print("Total time: " + str(elapsed_time) + "s")
+    print("Total time: %.2fs" % elapsed_time)

@@ -39,7 +39,7 @@ parser = pcky_parser.PCKYParser(pcfg, None)
 
 tokens = nltk.tokenize.wordpunct_tokenize(sentence)
 
-_, _, tagged = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll").get_sentence_tags(
+_, _, tagged = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll").get_sentence_tags(
     words=tokens)
 tagged = [tuple(row) for row in tagged]
 

@@ -130,7 +130,7 @@ if __name__ == '__main__':
         corpus_tags = pos_tagging_utils.get_corpus_tags(tagger_corpus)
         pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags, special_words=pos_tagging.PoSTagger.default_special_words)
     else:
-        pos_tagger = pos_tagging.MostFrequentTagger.fromFile("data\\it\\it-universal-train.conll", special_words=pos_tagging.PoSTagger.default_special_words)
+        pos_tagger = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll", special_words=pos_tagging.PoSTagger.default_special_words)
         # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
 
     # Test entries in Test set

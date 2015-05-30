@@ -1,6 +1,9 @@
 __author__ = 'BLN'
 
 import abc
+import pickle
+import os.path
+import pos_tagging_utils
 
 
 class PoSTagger:
@@ -25,9 +28,9 @@ class PoSTagger:
     def tag_index(tag, tags):
         if tag in tags:
             return tags[tag]
-        else:  # workaround for PUNCT character
+        else:  # workaround for punctuation character
             # if tag in ('.', ','):
-            return tags['PUNCT']
+            return tags['.']
 
     default_special_words = {'-LRB-': '-LRB-', '-RRB-': '-RRB-',
                              '-LSB-': '-LRB-', '-RSB-': '-RRB-',
@@ -40,6 +43,8 @@ class MostFrequentTagger(PoSTagger):
     _special_words = dict()
 
     def __init__(self, corpus, pos_tags, special_words=None):
+        if type(pos_tags) is tuple:
+            pos_tags = [item for item in pos_tags]
         self.pos_tags = pos_tags
 
         if special_words is not None:
@@ -52,6 +57,9 @@ class MostFrequentTagger(PoSTagger):
         # WARNING: Force PROPN for Proper Nouns rule
         if 'PROPN' not in self.pos_tags:
             self.pos_tags.append('PROPN')
+        # WARNING: Force . for .uation
+        if '.' not in self.pos_tags:
+            self.pos_tags.append('.')
 
         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
         self.corpus = corpus
@@ -123,16 +131,10 @@ class MostFrequentTagger(PoSTagger):
         return words, tags_indexes, [list(a) for a in zip(words, tags)]
 
     @staticmethod
-    def fromFile(path, **kwargs):
+    def from_file(path, **kwargs):
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
         return MostFrequentTagger(corpus, corpus_tags, **kwargs)
-
-
-import pickle
-import os.path
-import pos_tagging_utils
-
 
 class HMMTagger(PoSTagger):
     _opt_words_smoothing = 1
@@ -156,9 +158,19 @@ class HMMTagger(PoSTagger):
         # else:
         # Calculate and then cache corpus probabilities for future reuse
         #         self.pos_tags = postaggingutils.get_corpus_tags(corpus)
+        if type(pos_tags) is tuple:
+            pos_tags = [item for item in pos_tags]
         self.pos_tags = pos_tags
+
+        # WARNING: Force PROPN for Proper Nouns rule
+        if 'PROPN' not in self.pos_tags:
+            self.pos_tags.append('PROPN')
+        # WARNING: Force . for .uation
+        if '.' not in self.pos_tags:
+            self.pos_tags.append('.')
+
         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
-        self.countTag, self.probTagStart, self.probTagCons = self.getCorpusTransitionProbability()
+        self.countTag, self.probTagStart, self.probTagCons = self.get_corpus_transition_probability()
         #
         #     with open(corpus_cache_file, 'wb') as f:
         #         pickle.dump(self._to_pickle_order_list(self.pos_tags), f)
@@ -167,11 +179,9 @@ class HMMTagger(PoSTagger):
         #         pickle.dump(self._to_pickle_order_list(self.probTagCons), f)
 
     @staticmethod
-    def fromFile(path):
+    def from_file(path):
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-        if 'PROPN' not in corpus_tags:
-            corpus_tags.append('PROPN')
         return HMMTagger(corpus, corpus_tags)
 
     @staticmethod
@@ -198,7 +208,7 @@ class HMMTagger(PoSTagger):
     def opt_words_ignore_case(self, x):
         self._opt_words_ignore_case = x
 
-    def getCorpusTransitionProbability(self):
+    def get_corpus_transition_probability(self):
 
         pos_tags_len = len(self.pos_tags)
 
@@ -275,7 +285,7 @@ class HMMTagger(PoSTagger):
     # return self.pos_tags.index(tag)
     # else:
     # if tag in ('.', ','):
-    # return self.pos_tags.index('PUNCT')
+    # return self.pos_tags.index('.')
 
     def _get_word_with_tag_count(self, words):
         # Dictionary indexed by Words, containing dictionaries indexed by Tags
@@ -300,7 +310,7 @@ class HMMTagger(PoSTagger):
         # Return dictionaries (Word -> count), (Word -> (Tag -> count))
         return words_freq_dict, words_tag_freq_dict
 
-    def getCorpusEmissionProbability(self, words):
+    def get_corpus_emission_probability(self, words):
 
         if self._opt_words_ignore_case:
             words = [x.lower() for x in words]
@@ -350,6 +360,7 @@ class HMMTagger(PoSTagger):
         #         word_tag_freq = self.div(word_tag_freq/self.countTag[self.pos_tags_dict[tag]])
 
         # smooth unknown words (VERY IMPORTANT !!)
+        #   Currently smoothing function -> linear distribution over tags
         if self._opt_words_smoothing:
             i = 0
             for word in words:
@@ -364,7 +375,7 @@ class HMMTagger(PoSTagger):
             words = self.tokenize_sentence(sentence)
 
         # Array_Word( Tag -> Word_Tag_Probability )
-        probEmission = self.getCorpusEmissionProbability(words)
+        probEmission = self.get_corpus_emission_probability(words)
         probEmissionForViterbi = [list(
             [f for t, f in
              sorted([(self.pos_tags_dict[k], v) for k, v in tags_dict.items()])
@@ -410,9 +421,12 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     (prob, state) = max((V[n][y], y) for y in states)
     return (prob, path[state])
 
-
-# Don't study this, it just prints a table of the steps.
 def print_dptable(V):
+    """
+    Auxiliary method to print the table of the steps
+    :param V:
+    :return:
+    """
     s = "    " + " ".join(("%7d" % i) for i in range(len(V))) + "\n"
     for y in V[0]:
         s += "%.5s: " % y
