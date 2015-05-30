@@ -16,7 +16,7 @@ sentence = 'Ciascun Pluto può disporre del suo diritto.'
 
 pcfg_training_set_path = "data\\it\\tut-clean-simple.penn.txt"
 dataset = pcfg_parser_utils.load_corpus(pcfg_training_set_path)
-dataset=pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=True)
+dataset=pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=True, enable_dash_rules_replace=True)
 
 if (enable_caching and os.path.isfile(pcfg_cache_file)):
     with open(pcfg_cache_file, 'rb') as f:

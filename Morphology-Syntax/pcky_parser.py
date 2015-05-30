@@ -63,22 +63,25 @@ class PCKYParser:
 
         # Look left-to-right
         for end_index in range(1, tokens_count + 1):
-
+            # Will hold found parsing trees for the current token
             trees = []
 
-            # Match terminals using their tag (with prob == 1)
+            # Match current terminal using its PoS tag (=> PoS Tag -> Token)
             token, tag = tagged[end_index - 1]
+            # Build base tree: PoS Tag -> Token (with prob == 1)
             trees.append(nltk.ProbabilisticTree(tag, [token], prob=1.0))
 
-            # Match terminals using PCFG (with prob <  1)
+            # Match current terminal using the grammar (=> Production.LHS -> Token)
             productions = self._grammar.productions(rhs=tokens[end_index - 1])
 
-            # TODO: doc comment
+            # Add to current trees, the ones representing the production for the Token
+            # i.e. Production.LHS -> Token (with their prob <  1)
             for production in productions:
                 if str(production.lhs()) != tag:
                     trees.append(
                         nltk.ProbabilisticTree(production.lhs().symbol(), [production.rhs()], prob=production.prob()))
 
+            # Keep current token trees into bottom-right cell (relative to current token position)
             table[end_index - 1][end_index] = trees
 
             if debug:
@@ -91,8 +94,7 @@ class PCKYParser:
             # Look bottom-to-top
             for start_index in range(end_index - 2, -1, -1):
 
-                # TODO: doc comment
-                # A* Parser
+                # Will hold trees with highest probability (similar to A*)
                 most_likely_trees = {}
 
                 # Iterate over possible split positions
@@ -100,7 +102,8 @@ class PCKYParser:
                     left_trees = table[start_index][split]
                     right_trees = table[split][end_index]
 
-                    # Iterate through all possible combination of trees
+                    # Iterate through all possible combination of trees to find if there is a rule in the grammar
+                    # to match them (i.e. A | A -> left_tree.lhs right_tree.rhs)
                     for left_tree in left_trees:
                         for right_tree in right_trees:
                             key = (str(left_tree.label()), str(right_tree.label()))
@@ -109,9 +112,10 @@ class PCKYParser:
 
                                 # Iterate over possible productions
                                 for production in self._productionTable[key]:
-                                    prob = left_tree.prob() * right_tree.prob()
+                                    # Compute (A->L.lhs R.lhs) tree probability
+                                    prob = left_tree.prob() * right_tree.prob() * production.prob()
 
-                                    # TODO: doc comment
+                                    # Add tree to most likely pool, only if new or replace existing if higher probability
                                     existing_tree = None
                                     if production.lhs().symbol() in most_likely_trees:
                                         existing_tree = most_likely_trees[production.lhs().symbol()]
@@ -125,22 +129,22 @@ class PCKYParser:
                 # Sort by highest probability
                 trees_to_keep = sorted(trees_to_keep, key=lambda t: t.prob(), reverse=True)
 
-                # TODO: doc comment
-                # Prune all trees except the end node (we want to maximize our chances of finding the top node)
+                # Prune all trees except the end node
+                # (we want to maximize our chances of finding the top node)
                 if not (start_index == 0 and end_index == tokens_count):
                     trees_to_keep = trees_to_keep[0:20]
 
-                # TODO: doc comment
+                # Keep the trees in the previous row
                 table[start_index][end_index] = trees_to_keep
 
                 if debug:
+                    # Print the number of trees found for the given i & j
                     print(str(start_index) + " " + str(end_index) + ": " + str(len(most_likely_trees)))
 
-        # TODO: doc comment
         # Extract the final parsing trees from the top-right corner of the table
         final_trees = table[0][len(tokens)]
 
-        # Keep only trees belonging to the grammar: matching the root non-terminal
+        # Keep only trees belonging to the grammar (i.e. matching the root non-terminal)
 
         # Create lookup table of root productions
         root_productions = {}
@@ -149,14 +153,17 @@ class PCKYParser:
                 root_productions[prod.rhs()[0].symbol()] = prod
 
         trees = []
-        # Match against root productions (trees are already sorted with highest probability)
+        # Match against root productions
+        # (remember that trees are already sorted with highest probability first)
         for tree in final_trees:
             if tree.label() in root_productions:
                 if debug:
-                    print("Matched root production")
+                    # Print the trees we found
+                    print("Matched root production with tree: %s" % tree)
                 trees.append(tree)
 
         if debug:
+            # Print the total number of found trees
             print("Total trees: %d" % len(trees))
         return trees
 
@@ -173,6 +180,7 @@ class PCKYParser:
         trees = self.get_parsing_trees(tokens, tagged, tree_head, debug)
 
         if len(trees) > 0:
+            # Need to extract the most probable (but trees are already sorted with highest probability)
             tree = trees[0]
             # Create the tree with given root non-terminal
             most_likely_tree = nltk.tree.ProbabilisticTree(tree_head, [tree], prob=tree.prob())

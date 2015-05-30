@@ -1,19 +1,24 @@
+Parametri-Ottimizzazioni:
+
+enable_prune_tree=True (es. -NONE-)
+enable_dash_rules_replace=True (es. NP-1234)
+
 use_treebank_as_tagging_corpus = False
 use_training_set_as_test_set = True
 
-        -- All --
+    -- All --
     Number of sentence        =   1096
     Number of Error sentence  =      0
-    Number of Skip  sentence  =    478
-    Number of Valid sentence  =    618
-    Bracketing Recall         =  23.44
-    Bracketing Precision      =  24.35
-    Bracketing FMeasure       =  23.89
-    Complete match            =   3.07
-    Average crossing          =  10.54
-    No crossing               =  10.68
-    2 or less crossing        =  28.64
-    Tagging accuracy          =  85.29
+    Number of Skip  sentence  =    493
+    Number of Valid sentence  =    603
+    Bracketing Recall         =  43.24
+    Bracketing Precision      =  49.78
+    Bracketing FMeasure       =  46.28
+    Complete match            =   4.98
+    Average crossing          =   5.70
+    No crossing               =  24.71
+    2 or less crossing        =  42.79
+    Tagging accuracy          =  92.66
 
 use_treebank_as_tagging_corpus = True
 use_training_set_as_test_set = True
@@ -21,13 +26,13 @@ use_training_set_as_test_set = True
     -- All --
     Number of sentence        =   1096
     Number of Error sentence  =      0
-    Number of Skip  sentence  =    569
-    Number of Valid sentence  =    527
-    Bracketing Recall         =  30.12
-    Bracketing Precision      =  33.02
-    Bracketing FMeasure       =  31.50
-    Complete match            =   4.17
-    Average crossing          =   7.54
-    No crossing               =  13.66
-    2 or less crossing        =  36.62
-    Tagging accuracy          =  92.11
+    Number of Skip  sentence  =    574
+    Number of Valid sentence  =    522
+    Bracketing Recall         =  45.25
+    Bracketing Precision      =  52.81
+    Bracketing FMeasure       =  48.74
+    Complete match            =   6.32
+    Average crossing          =   4.62
+    No crossing               =  29.12
+    2 or less crossing        =  48.66
+    Tagging accuracy          =  96.10

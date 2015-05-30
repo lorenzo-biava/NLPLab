@@ -6,6 +6,8 @@ Module containing utility methods for CFG grammar parsing
 
 import logging
 import nltk
+import re
+
 
 def load_corpus(path):
     """
@@ -17,8 +19,9 @@ def load_corpus(path):
 
     return sentences
 
+
 def to_universal_tags(text):
-    #universal_treebank_pos_tags = ('ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM', 'PRON', '.', 'VERB', 'X')
+    # universal_treebank_pos_tags = ('ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM', 'PRON', '.', 'VERB', 'X')
     replacements = {
         # ARTICOLI
         'ART': 'DET',
@@ -154,7 +157,7 @@ def nltk_tree_flat_pprint(tree):
     return ' '.join(tree.pformat().split())
 
 
-def clean_dataset(dataset, enable_prune_tree=False):
+def clean_dataset(dataset, enable_prune_tree=False, enable_dash_rules_replace=False):
     """
     Clean dataset, converting tags to Universal PoS tags and optionally pruning useless nodes
     :param dataset:
@@ -163,6 +166,15 @@ def clean_dataset(dataset, enable_prune_tree=False):
     """
     tmp_dataset = list()
     for entry in dataset:
+        # Replace WORD-NUMBER Non-terminal in WORD
+        if enable_dash_rules_replace:
+            m = True
+            while m is not None:
+                m = re.search('\([\w]+[-][^\s]*\s', entry)
+                if m is not None:
+                    m2 = re.search('\([\w]+', m.group())
+                    entry=entry.replace(m.group(), m2.group())
+
         entry = to_universal_tags(entry)
         # WARNING !! Labeling tree ROOT (because input treebank has no label for the root, but PCKY needs one)
         entry = "(ROOT%s" % entry[1:]
