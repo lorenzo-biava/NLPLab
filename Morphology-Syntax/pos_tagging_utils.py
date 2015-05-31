@@ -6,7 +6,7 @@ universal_treebank_pos_tags = ('ADJ', 'ADP', 'ADV', 'AUX', 'CONJ', 'DET', 'INTJ'
 #universal_treebank_pos_tags = ('ADJ', 'ADP', 'ADV', 'CONJ', 'DET', 'NOUN', 'NUM', 'PRON', '.', 'VERB', 'X')
 
 
-def load_corpus(path):
+def load_corpus(path, word_field_index=1, tag_field_index=3):
     sentences = [{}]
     hasher = hashlib.md5()
     BLOCKSIZE = 65536
@@ -28,7 +28,7 @@ def load_corpus(path):
 
         #print(line)
         fields = line.split("\t")
-        sentence.append((fields[1], fields[3]))
+        sentence.append((fields[word_field_index], fields[tag_field_index]))
 
     return (sentences, hasher.hexdigest())
 
