@@ -2,6 +2,7 @@ package it.unito.nlplab.semantics.wsd;
 
 import it.uniroma1.lcl.babelnet.BabelNet;
 import it.uniroma1.lcl.babelnet.BabelSynset;
+import it.uniroma1.lcl.babelnet.BabelSynsetIDRelation;
 import it.uniroma1.lcl.babelnet.data.BabelCategory;
 import it.uniroma1.lcl.babelnet.data.BabelExample;
 import it.uniroma1.lcl.babelnet.data.BabelGloss;
@@ -59,7 +60,18 @@ public class WSDExtendedGlossSample {
 
 		String cleanWord = cleaner.cleanText(word);
 
-		List<ExtendedSense> senses = getExtendedSenses(cleanWord, pos);
+		int relatedSensesLimit = 10;
+
+		List<ExtendedSense> senses = getExtendedSenses(cleanWord, pos,
+				relatedSensesLimit);
+
+		// Print sense for debug
+		LOG.info(String.format("Found %d senses:", senses.size()));
+		int senseCount = 0;
+		for (ExtendedSense sense : senses) {
+			LOG.info(String.format("\tSense %d:", ++senseCount));
+			LOG.info(sense.pprint(1));
+		}
 
 		for (String context : contexts) {
 
@@ -168,6 +180,16 @@ public class WSDExtendedGlossSample {
 
 	private static List<ExtendedSense> getExtendedSenses(String searchWord,
 			String pos) {
+		return getExtendedSenses(searchWord, pos, 0);
+	}
+
+	private static List<ExtendedSense> getExtendedSenses(String searchWord,
+			String pos, int limit) {
+
+		LOG.info(String
+				.format("Getting senses for word '%s', with PoS '%s', related senses limit %d",
+						searchWord, pos, limit));
+
 		List<ExtendedSense> senses = new ArrayList<ExtendedSense>();
 
 		BabelNet bn = BabelNet.getInstance();
@@ -190,8 +212,13 @@ public class WSDExtendedGlossSample {
 
 		List<BabelSynset> bySynsets = bn.getSynsets(Language.IT, searchWord,
 				bpos);
+		int senseCount = 0;
 
 		for (BabelSynset bsynset : bySynsets) {
+
+			LOG.debug(String.format("Retrieving sense # %d/%d", ++senseCount,
+					bySynsets.size()));
+
 			ExtendedSense sense = new ExtendedSense();
 			sense.setId(bsynset.getId().getID());
 			sense.setName(bsynset.getMainSense());
@@ -204,17 +231,36 @@ public class WSDExtendedGlossSample {
 							+ StringUtils.join(
 									extractCategoriesFromBabelSynset(bsynset),
 									", "));
-			// List<Sense> rss = new ArrayList<Sense>();
-			// for (BabelSynsetIDRelation brel : bsynset.getEdges()) {
-			// Sense rs = new Sense();
-			// rs.setGlosses(extractGlossesFromBabelSynset(bsynset));
-			//
-			// rs.setExamples(extractExamplesFromBabelSynset(brel
-			// .getBabelSynsetIDTarget().toBabelSynset()));
-			//
-			// rss.add(rs);
-			// }
-			// sense.setRelatedSenses(rss);
+
+			// Get related senses (only directly connected, with limit)
+			int relatedSensesLimit = (limit == 0 ? 999 : limit);
+
+			List<Sense> rss = new ArrayList<Sense>();
+			List<BabelSynsetIDRelation> relatedSenses = bsynset.getEdges();
+			int relatedSenseCount = 0;
+			for (BabelSynsetIDRelation brel : relatedSenses) {
+
+				if (--relatedSensesLimit < 0)
+					break;
+
+				LOG.debug(String.format(
+						"Retrieving related sense # %d/%d of sense %s",
+						++relatedSenseCount, relatedSenses.size(),
+						sense.getId()));
+
+				Sense rs = new Sense();
+				BabelSynset relatedSynset = brel.getBabelSynsetIDTarget()
+						.toBabelSynset();
+
+				rs.setId(relatedSynset.getId().getID());
+				rs.setName(relatedSynset.getMainSense());
+				rs.setGlosses(extractGlossesFromBabelSynset(relatedSynset));
+				rs.setExamples(extractExamplesFromBabelSynset(relatedSynset));
+
+				if (!(rs.getGlosses().isEmpty() && rs.getExamples().isEmpty()))
+					rss.add(rs);
+			}
+			sense.setRelatedSenses(rss);
 
 			senses.add(sense);
 		}

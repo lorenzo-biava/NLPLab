@@ -24,4 +24,19 @@ public class ExtendedSense extends Sense {
 						StringUtils.join(getExamples(), ", "),
 						StringUtils.join(relatedSenses, ", "));
 	}
+
+	public String pprint(int startTabs) {
+		StringBuilder pp = new StringBuilder();
+		pp.append(super.pprint(startTabs));
+
+		pp.append(String.format(getTabs(startTabs+1)+"Related Senses: %d", getRelatedSenses()
+				.size()));
+		for (Sense relatedSense : getRelatedSenses()) {
+			pp.append(relatedSense.pprint(startTabs+2));
+		}
+		
+		return pp.toString();
+	}
+
+	
 }
