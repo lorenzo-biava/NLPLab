@@ -1,5 +1,7 @@
 package it.unito.nlplab.semantics.wsd;
 
+import it.unito.nlplab.semantics.textcleaner.LemmatizingTextCleaner;
+import it.unito.nlplab.semantics.textcleaner.StemmingTextCleaner;
 import it.unito.nlplab.semantics.textcleaner.StopWordOnlyTextCleaner;
 import it.unito.nlplab.semantics.textcleaner.TextCleaner;
 import it.unito.nlplap.semantics.utils.StopWordsTrimmer;
@@ -86,7 +88,7 @@ public class WSDSimpleSample {
 			TextCleaner cleaner) throws Exception {
 		List<Sense> senses = getSenses(searchWord, pos, wn);
 
-		int maxOverlap = 0;
+		int maxOverlap = -1;
 		Sense bestSense = null;
 		for (Sense sense : senses) {
 			int overlap = getOverlap(sense, context, cleaner);
