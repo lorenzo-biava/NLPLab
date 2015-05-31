@@ -1,9 +1,8 @@
 package it.unito.nlplap.semantics.rocchio;
 
 import it.unito.nlplap.semantics.rocchio.utils.Document;
-import it.unito.nlplap.semantics.rocchio.utils.MutableDouble;
-import it.unito.nlplap.semantics.rocchio.utils.MutableInt;
-import it.unito.nlplap.semantics.rocchio.utils.Utils;
+import it.unito.nlplap.semantics.utils.MutableDouble;
+import it.unito.nlplap.semantics.utils.MutableInt;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -64,7 +63,7 @@ public class RocchioClassifier {
 		}
 		if (LOG.isDebugEnabled())
 			LOG.debug(String.format("Training: Total IDF='%d', idf=[%s]",
-					idf.size(), Utils.sortByComparator(idf, true)));
+					idf.size(), it.unito.nlplap.semantics.utils.Utils.sortByComparator(idf, true)));
 
 		// Extract collection terms (feature vector)
 		// Only relevant terms (i.e. idf > 0)
@@ -72,7 +71,7 @@ public class RocchioClassifier {
 			if (term.getValue().getValue() >= pruningThreshold)
 				terms.put(term.getKey(), new MutableInt(0));
 		}
-		featureVector = it.unito.nlplap.semantics.rocchio.utils.Utils
+		featureVector = it.unito.nlplap.semantics.utils.Utils
 				.clone(terms);
 
 		LOG.debug(String.format("Training: Total terms='%d', terms=[%s]",
@@ -102,7 +101,7 @@ public class RocchioClassifier {
 				LOG.debug(String.format(
 						"Rocchio Class '%s' features=[%s]",
 						clazz.getKey(),
-						trimLog(Utils.sortByComparator(clazz.getValue(), true),
+						trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(clazz.getValue(), true),
 								256)));
 			LOG.info(String.format("Training: extracted Rocchio class '%s'",
 					clazz.getKey()));
@@ -119,7 +118,7 @@ public class RocchioClassifier {
 
 	public Document computeDocumentFeatures(Document doc,
 			Map<String, MutableDouble> idf) {
-		doc.setCollectionTermCount(it.unito.nlplap.semantics.rocchio.utils.Utils
+		doc.setCollectionTermCount(it.unito.nlplap.semantics.utils.Utils
 				.clone(terms));
 
 		// Term Count
@@ -133,19 +132,19 @@ public class RocchioClassifier {
 							.get(term.getKey()).getValue())
 							/ doc.getTerms().size()));
 
-		doc.setCollectionTermWeight(it.unito.nlplap.semantics.rocchio.utils.Utils
+		doc.setCollectionTermWeight(it.unito.nlplap.semantics.utils.Utils
 				.clone(doc.getCollectionTermFrequency()));
 
 		if (LOG.isDebugEnabled()) {
 			LOG.debug(String.format(
 					"Document '%s' termCount=[%s]",
 					doc.getName(),
-					trimLog(Utils.sortByComparator(doc.getTermCount(), true),
+					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(doc.getTermCount(), true),
 							256)));
 			LOG.debug(String.format(
 					"Document '%s' termFrequency=[%s]",
 					doc.getName(),
-					trimLog(Utils.sortByComparator(
+					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(
 							doc.getCollectionTermFrequency(), true), 256)));
 		}
 
@@ -161,7 +160,7 @@ public class RocchioClassifier {
 			LOG.debug(String.format(
 					"Document '%s' termWeight=[%s]",
 					doc.getName(),
-					trimLog(Utils.sortByComparator(
+					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(
 							doc.getCollectionTermWeight(), true), 256)));
 
 		return doc;
@@ -231,7 +230,7 @@ public class RocchioClassifier {
 			if (classes.get(doc.getCategory()) == null) {
 				// Initialize class
 				classes.put(doc.getCategory(),
-						it.unito.nlplap.semantics.rocchio.utils.Utils
+						it.unito.nlplap.semantics.utils.Utils
 								.clone(features));
 				List<Document> pos = new ArrayList<Document>();
 				pos.add(doc);

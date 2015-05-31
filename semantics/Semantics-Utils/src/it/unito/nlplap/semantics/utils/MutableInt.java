@@ -1,4 +1,5 @@
-package it.unito.nlplap.semantics.rocchio.utils;
+package it.unito.nlplap.semantics.utils;
+
 
 
 public class MutableInt implements Cloneable, Comparable<MutableInt> {

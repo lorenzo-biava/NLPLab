@@ -1,5 +1,8 @@
 package it.unito.nlplap.semantics.rocchio.utils;
 
+import it.unito.nlplap.semantics.utils.MutableDouble;
+import it.unito.nlplap.semantics.utils.MutableInt;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

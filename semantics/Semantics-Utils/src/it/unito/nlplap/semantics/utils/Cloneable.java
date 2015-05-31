@@ -1,4 +1,4 @@
-package it.unito.nlplap.semantics.rocchio.utils;
+package it.unito.nlplap.semantics.utils;
 
 public interface Cloneable {
 	public Object clone();
