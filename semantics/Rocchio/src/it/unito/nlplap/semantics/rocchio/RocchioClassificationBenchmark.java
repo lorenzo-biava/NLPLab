@@ -6,8 +6,10 @@ import it.unito.nlplap.semantics.utils.Utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Random;
 
 import org.apache.logging.log4j.LogManager;
@@ -49,7 +51,11 @@ public class RocchioClassificationBenchmark {
 		List<Document> testSet = new ArrayList<Document>();
 		List<Document> trainingSet = new ArrayList<Document>();
 
-		datasetSplit(dataSet, testsetRatio, trainingSet, testSet);
+		Map<String, List<Document>> datasetInClasses = datasetSplitInClasses(dataSet);
+		for (Map.Entry<String, List<Document>> dsClass : datasetInClasses
+				.entrySet()) {
+			datasetSplit(dsClass.getValue(), testsetRatio, trainingSet, testSet);
+		}
 
 		RocchioClassifier rc = new RocchioClassifier(trainingSet, 4);
 
@@ -79,17 +85,43 @@ public class RocchioClassificationBenchmark {
 			List<T> trainingSet, List<T> testSet) {
 		int testSetSize = (int) Math.floor(dataSet.size() * testsetRatio);
 
-		testSet.clear();
-		trainingSet.clear();
+		// testSet.clear();
+		// trainingSet.clear();
+		// trainingSet.addAll(dataSet);
 
-		trainingSet.addAll(dataSet);
+		List<T> tmpTrainingSet = new ArrayList<T>();
+		tmpTrainingSet.addAll(dataSet);
 
 		Random r = new Random(System.currentTimeMillis());
 		for (int i = testSetSize; i > 0; i--) {
-			int index = r.nextInt(trainingSet.size());
-			testSet.add(trainingSet.get(index));
-			trainingSet.remove(index);
+			int index = r.nextInt(tmpTrainingSet.size());
+			testSet.add(tmpTrainingSet.get(index));
+			tmpTrainingSet.remove(index);
 		}
+
+		trainingSet.addAll(tmpTrainingSet);
+	}
+
+	/**
+	 * A classification item aware of its class.
+	 */
+	public interface ClassificationClassAware<C> {
+		public C getClassificationClass();
+	}
+
+	public static <C, T extends ClassificationClassAware<C>> Map<C, List<T>> datasetSplitInClasses(
+			List<T> dataSet) {
+		Map<C, List<T>> classes = new LinkedHashMap<C, List<T>>();
+
+		for (T item : dataSet) {
+			C clazz = item.getClassificationClass();
+			if (!classes.containsKey(clazz))
+				classes.put(clazz, new ArrayList<T>());
+
+			classes.get(clazz).add(item);
+		}
+
+		return classes;
 	}
 
 	public static List<Document> loadDocs(File docDir, Locale locale)
@@ -142,7 +174,7 @@ public class RocchioClassificationBenchmark {
 
 				for (File file : dir.listFiles()) {
 					if (file.isFile() && file.getName().indexOf(".") != 0
-							&& file.length() > 0) {
+							/*&& file.length() > 0*/) {
 						i++;
 
 						String text = Utils.fileToText(file);

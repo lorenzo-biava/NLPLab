@@ -62,8 +62,9 @@ public class RocchioClassifier {
 					Math.log(documentCount / term.getValue().getValue()));
 		}
 		if (LOG.isDebugEnabled())
-			LOG.debug(String.format("Training: Total IDF='%d', idf=[%s]",
-					idf.size(), it.unito.nlplap.semantics.utils.Utils.sortByComparator(idf, true)));
+			LOG.debug(String.format("Training: Total IDF='%d', idf=[%s]", idf
+					.size(), it.unito.nlplap.semantics.utils.Utils
+					.sortByComparator(idf, true)));
 
 		// Extract collection terms (feature vector)
 		// Only relevant terms (i.e. idf > 0)
@@ -71,8 +72,7 @@ public class RocchioClassifier {
 			if (term.getValue().getValue() >= pruningThreshold)
 				terms.put(term.getKey(), new MutableInt(0));
 		}
-		featureVector = it.unito.nlplap.semantics.utils.Utils
-				.clone(terms);
+		featureVector = it.unito.nlplap.semantics.utils.Utils.clone(terms);
 
 		LOG.debug(String.format("Training: Total terms='%d', terms=[%s]",
 				terms.size(), terms));
@@ -98,11 +98,12 @@ public class RocchioClassifier {
 		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
 				.entrySet()) {
 			if (LOG.isDebugEnabled())
-				LOG.debug(String.format(
-						"Rocchio Class '%s' features=[%s]",
-						clazz.getKey(),
-						trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(clazz.getValue(), true),
-								256)));
+				LOG.debug(String
+						.format("Rocchio Class '%s' features=[%s]",
+								clazz.getKey(),
+								trimLog(it.unito.nlplap.semantics.utils.Utils
+										.sortByComparator(clazz.getValue(),
+												true), 256)));
 			LOG.info(String.format("Training: extracted Rocchio class '%s'",
 					clazz.getKey()));
 		}
@@ -125,12 +126,14 @@ public class RocchioClassifier {
 		doc.getCollectionTermCount().putAll(doc.getTermCount());
 
 		// Term frequency
-		for (Map.Entry<String, MutableInt> term : terms.entrySet())
-			doc.getCollectionTermFrequency().put(
-					term.getKey(),
-					new MutableDouble((double) (doc.getCollectionTermCount()
-							.get(term.getKey()).getValue())
-							/ doc.getTerms().size()));
+		for (Map.Entry<String, MutableInt> term : terms.entrySet()) {
+			double value = 0;
+			if (doc.getTerms().size() > 0)
+				value = ((double) doc.getCollectionTermCount().get(term.getKey())
+						.getValue()) / doc.getTerms().size();
+			doc.getCollectionTermFrequency().put(term.getKey(),
+					new MutableDouble(value));
+		}
 
 		doc.setCollectionTermWeight(it.unito.nlplap.semantics.utils.Utils
 				.clone(doc.getCollectionTermFrequency()));
@@ -139,13 +142,14 @@ public class RocchioClassifier {
 			LOG.debug(String.format(
 					"Document '%s' termCount=[%s]",
 					doc.getName(),
-					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(doc.getTermCount(), true),
-							256)));
+					trimLog(it.unito.nlplap.semantics.utils.Utils
+							.sortByComparator(doc.getTermCount(), true), 256)));
 			LOG.debug(String.format(
 					"Document '%s' termFrequency=[%s]",
 					doc.getName(),
-					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(
-							doc.getCollectionTermFrequency(), true), 256)));
+					trimLog(it.unito.nlplap.semantics.utils.Utils
+							.sortByComparator(doc.getCollectionTermFrequency(),
+									true), 256)));
 		}
 
 		if (idf != null) {
@@ -160,8 +164,9 @@ public class RocchioClassifier {
 			LOG.debug(String.format(
 					"Document '%s' termWeight=[%s]",
 					doc.getName(),
-					trimLog(it.unito.nlplap.semantics.utils.Utils.sortByComparator(
-							doc.getCollectionTermWeight(), true), 256)));
+					trimLog(it.unito.nlplap.semantics.utils.Utils
+							.sortByComparator(doc.getCollectionTermWeight(),
+									true), 256)));
 
 		return doc;
 	}
@@ -230,8 +235,7 @@ public class RocchioClassifier {
 			if (classes.get(doc.getCategory()) == null) {
 				// Initialize class
 				classes.put(doc.getCategory(),
-						it.unito.nlplap.semantics.utils.Utils
-								.clone(features));
+						it.unito.nlplap.semantics.utils.Utils.clone(features));
 				List<Document> pos = new ArrayList<Document>();
 				pos.add(doc);
 				classesPOS.put(doc.getCategory(), pos);
