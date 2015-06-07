@@ -53,6 +53,16 @@ public class StopWordsTrimmer {
 	public static List<String> tokenize(String text) {
 		return Arrays.asList(text.split(" "));
 	}
+	
+	/**
+	 * Split a sentence in words by spaces, commas, apex.
+	 * 
+	 * @param text
+	 * @return
+	 */
+	public static List<String> tokenizeFull(String text) {
+		return Arrays.asList(text.split("\\s|,|'"));
+	}
 
 	/**
 	 * Remove stopwords found in the given dataset.

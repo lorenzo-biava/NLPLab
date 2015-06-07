@@ -3,14 +3,19 @@ package it.unito.nlplap.semantics.utils;
 import it.unito.nlplap.semantics.utils.lemmatizer.MorphItLemmatizer;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Properties;
 
 import org.apache.commons.lang3.StringUtils;
 
 import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.PartOfSpeechAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -23,33 +28,77 @@ public class FeatureVectorUtils {
 	public static MorphItLemmatizer morphitLemmatizer;
 
 	/**
-	 * Stub, currently returning only normalized and lemmatized words.
+	 * Return a feature vector for the given text.<br/>
+	 * Features are the lemmas found in the text, cleaned of the stop-words.
 	 * 
 	 * @param text
-	 * @return
+	 * @param language
+	 * @param acceptedPoS
+	 *            an optional list of PoS to filter words with. If null all
+	 *            words will be used. <br/>
+	 *            The format depends on the language:
+	 *            <ul>
+	 *            <li>English: Penn TreeBank Project</li>
+	 *            <li>Others: not supported !</li>
+	 *            </ul>
+	 * @return a Map of Lemmas, Count
 	 * @throws Exception
 	 */
-	public static List<String> getFeatureVector(String text) throws Exception {
+	public static Map<String, Integer> getFeatureVector(String text,
+			Locale language, List<String> acceptedPoS) throws Exception {
 
-		// LEMMATIZE
-		List<String> lemmas = getLemmas(text);
+		StopWordsTrimmer swt = new StopWordsTrimmer(language);
 
-		return lemmas;
+		// IMPORTANT: Using LinkedHashMap to preserve order !
+		Map<String, Integer> lemmaCount = new LinkedHashMap<String, Integer>();
+
+		// Extract lemmas with count
+		List<String> lemmas = getLemmas(text, language, lemmaCount,
+				acceptedPoS, false, true);
+
+		// Trim stop-words
+		List<String> terms = swt.trim(lemmas);
+
+		// IMPORTANT: Using LinkedHashMap to preserve order !
+		Map<String, Integer> lemmaCountFinal = new LinkedHashMap<String, Integer>();
+		for (String term : terms)
+			lemmaCountFinal.put(term, lemmaCount.get(term));
+
+		return lemmaCountFinal;
 	}
 
 	/**
 	 * Return normalized, tokenized and lemmatized words-
 	 * 
 	 * @param text
+	 * @param language
+	 * @param lemmaCount
+	 *            an optional map in with set the count of lemmas in the text
+	 * @param acceptedPoS
+	 *            an optional list of PoS to filter words with. If null all
+	 *            words will be used. <br/>
+	 *            The format depends on the language:
+	 *            <ul>
+	 *            <li>English: Penn TreeBank Project</li>
+	 *            <li>Others: not supported !</li>
+	 *            </ul>
 	 * @return
 	 * @throws Exception
 	 */
-	public static List<String> getLemmas(String text, Locale language)
-			throws Exception {
+	public static List<String> getLemmas(String text, Locale language,
+			Map<String, Integer> lemmaCount, List<String> acceptedPoS,
+			boolean removeStopWords, boolean preserveProperNounCase) throws Exception {
+
+		Map<String, Object> goodPoS = new HashMap<String, Object>();
+		if (acceptedPoS != null)
+			for (String pos : acceptedPoS)
+				goodPoS.put(pos, null);
 
 		StopWordsTrimmer swt = new StopWordsTrimmer(language);
-		List<String> words = swt.trim(StopWordsTrimmer.tokenize(swt
-				.normalize(text)));
+		List<String> words = StopWordsTrimmer.tokenize(swt.normalize(text));
+
+		if (removeStopWords)
+			words = swt.trim(words);
 
 		List<String> lemmas = new ArrayList<String>();
 
@@ -65,7 +114,9 @@ public class FeatureVectorUtils {
 				morphitLemmatizer = new MorphItLemmatizer();
 
 			for (String string : words) {
-				lemmas.add(morphitLemmatizer.getLemmaString(string));
+				String lemma = morphitLemmatizer.getLemmaString(string);
+				lemmas.add(lemma);
+				addToLemmaCount(lemmaCount, lemma);
 			}
 
 		} else {
@@ -78,7 +129,8 @@ public class FeatureVectorUtils {
 				pipeline = new StanfordCoreNLP(props);
 
 			// read some text in the text variable
-			text = StringUtils.join(words, " ").toLowerCase();
+			// TODO: Make a choice ?
+			text = StringUtils.join(words, " ");//.toLowerCase();
 
 			// create an empty Annotation just with the given text
 			Annotation document = new Annotation(text);
@@ -98,12 +150,21 @@ public class FeatureVectorUtils {
 				// methods
 				for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
 					// // this is the text of the token
-					// String word = token.get(TextAnnotation.class);
+					String word = token.get(TextAnnotation.class);
 					// // this is the POS tag of the token
-					// String pos = token.get(PartOfSpeechAnnotation.class);
+					String pos = token.get(PartOfSpeechAnnotation.class);
+					// Skip unwanted PoS
+					if (acceptedPoS != null && !goodPoS.containsKey(pos))
+						continue;
+										
 					// // this is the NER label of the token
 					String lemma = token.get(LemmaAnnotation.class);
+					
+					if (preserveProperNounCase && isProperNoun(word, pos, "Stanford"))						
+						lemma = word;
+
 					lemmas.add(lemma);
+					addToLemmaCount(lemmaCount, lemma);
 				}
 			}
 		}
@@ -112,9 +173,46 @@ public class FeatureVectorUtils {
 		return lemmas;
 	}
 
+	protected static boolean isProperNoun(String word, String pos, String posType) {
+		if (posType.equals("Stanford")) {
+			boolean is=false;
+			is |= pos.equals("NNP");
+			is |= pos.equals("NNPS");
+			//is |= pos.equals("NN") && Character.isUpperCase(word.charAt(0));
+			//is |= pos.equals("NNS") && Character.isUpperCase(word.charAt(0));
+			return is;
+		}
+
+		throw new IllegalArgumentException(String.format(
+				"Undefined pos type %s", posType));
+	}
+
+	protected static void addToLemmaCount(Map<String, Integer> lemmaCount,
+			String lemma) {
+		if (lemmaCount == null)
+			return;
+
+		if (lemmaCount.containsKey(lemma))
+			lemmaCount.put(lemma, lemmaCount.get(lemma) + 1);
+		else
+			lemmaCount.put(lemma, 1);
+	}
+
 	/**
-	 * Return normalized, tokenized and lemmatized words- Default English
-	 * locale.
+	 * Return normalized, tokenized, stop-words removed and lemmatized words.
+	 * 
+	 * @param text
+	 * @return
+	 * @throws Exception
+	 */
+	public static List<String> getLemmas(String text, Locale language)
+			throws Exception {
+		return getLemmas(text, language, null, null, true, false);
+	}
+
+	/**
+	 * Return normalized, tokenized, stop-words removed and lemmatized words-<br/>
+	 * Defaulted to English language.
 	 * 
 	 * @param text
 	 * @return

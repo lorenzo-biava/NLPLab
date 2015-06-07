@@ -1,10 +1,15 @@
 package it.unito.nlplap.semantics.rdf;
 
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
+import it.unito.nlplap.semantics.utils.Utils;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Scanner;
 
 import com.hp.hpl.jena.rdf.model.Model;
@@ -145,10 +150,17 @@ public class RDFPopulatorSample {
 				docFeatures.setDate(line);
 		}
 
-		List<String> feat = FeatureVectorUtils.getFeatureVector(contentBuilder
-				.toString());
+		Map<String, Integer> feat = FeatureVectorUtils.getFeatureVector(
+				contentBuilder.toString(), Locale.ENGLISH,
+				Arrays.asList(new String[] { "NN", "NNS", "NNP", "NNPS"/*, "JJ", "JJR", "JJS"*/}));
+		//feat = Utils.sortByComparator(feat, true);
+
+		List<String> feats = new ArrayList<String>();
+		feats.addAll(feat.keySet());
+
 		docFeatures.setSubject(StringUtils.join(
-				feat.subList(0, Math.min(3, feat.size())), ","));
+				feats.subList(0, Math.min(3, feat.size())), ","));
+
 		docFeatures.setPublisher("BBC");
 		docFeatures.setCreator("Lorenzo Biava");
 

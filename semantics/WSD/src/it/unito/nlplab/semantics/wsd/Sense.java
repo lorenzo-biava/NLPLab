@@ -61,4 +61,28 @@ public class Sense {
 				StringUtils.join(glosses, ", "),
 				StringUtils.join(examples, ", "));
 	}
+	
+	public String pprint(int startTabs) {
+		StringBuilder pp = new StringBuilder();
+		pp.append(String.format(getTabs(startTabs + 1) + "Id: %s", getId()));
+		pp.append(String.format(getTabs(startTabs + 1) + "Name: %s", getName()));
+		pp.append(String.format(getTabs(startTabs + 1) + "Glosses: %d",
+				getGlosses().size()));
+		for (String gloss : getGlosses())
+			pp.append(String.format(getTabs(startTabs + 2) + "%s", gloss));
+		pp.append(String.format(getTabs(startTabs + 1) + "Examples: %d",
+				getExamples().size()));
+		for (String example : getExamples())
+			pp.append(String.format(getTabs(startTabs + 2) + "%s", example));
+		
+		return pp.toString();
+	}
+	
+	protected String getTabs(int size) {
+		String tabs = "\n";
+		while (--size > 0)
+			tabs += "\t";
+		return tabs;
+
+	}
 }

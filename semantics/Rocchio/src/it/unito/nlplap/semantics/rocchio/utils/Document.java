@@ -1,5 +1,9 @@
 package it.unito.nlplap.semantics.rocchio.utils;
 
+import it.unito.nlplap.semantics.rocchio.RocchioClassificationBenchmark.ClassificationClassAware;
+import it.unito.nlplap.semantics.utils.MutableDouble;
+import it.unito.nlplap.semantics.utils.MutableInt;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -8,7 +12,7 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-public class Document {
+public class Document implements ClassificationClassAware<String> {
 	private static final Logger LOG = LogManager.getLogger(Document.class);
 
 	private String name, path, text, category;
@@ -54,6 +58,11 @@ public class Document {
 		this.text = text;
 	}
 
+	@Override
+	public String getClassificationClass() {
+		return category;
+	}
+	
 	public String getCategory() {
 		return category;
 	}
