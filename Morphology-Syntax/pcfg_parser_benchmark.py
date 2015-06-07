@@ -61,8 +61,8 @@ def test_sentence(i, entry, kwargs):
     # logger.debug(t)
 
     tagged = [tuple(row) for row in tagged]
-
-    parsing_tree = kwargs['parser'].get_parsing_tree(tokens, tagged, tree_head='ROOT', debug=False)
+    pcky_pruning_enabled = kwargs['pcky_pruning_enabled']
+    parsing_tree = kwargs['parser'].get_parsing_tree(tokens, tagged, tree_head='ROOT', pruning_enabled=pcky_pruning_enabled, debug=False)
 
     if parsing_tree is None:
         # logger.debug("WARNING: No parsing tree found !")
@@ -103,6 +103,7 @@ if __name__ == '__main__':
     use_training_set_as_test_set = False
 
     use_treebank_as_tagging_corpus = True
+    pcky_pruning_enabled = True
 
     parallel = True
     # --- End Options ---
@@ -193,7 +194,7 @@ if __name__ == '__main__':
         p_tasks = parallel_task.ParallelTasks(label="PCFG", progress_interval=2)  # , processes=4)
         p_tasks.log_level(logging.INFO)
         result_set = p_tasks.apply_async_with_callback(test_set, test_sentence, chunks=10, pos_tagger=pos_tagger,
-                                                       parser=parser)
+                                                       parser=parser, pcky_pruning_enabled=pcky_pruning_enabled)
 
     # Sequential processing
     else:
@@ -223,7 +224,7 @@ if __name__ == '__main__':
 
             tagged = [tuple(row) for row in tagged]
 
-            parses = parser.get_parsing_tree(tokens, tagged, tree_head='ROOT', debug=False)
+            parses = parser.get_parsing_tree(tokens, tagged, tree_head='ROOT', pruning_enabled=pcky_pruning_enabled, debug=False)
 
             if (len(parses) < 1):
                 logger.debug("WARNING: No parsing tree found !")

@@ -42,7 +42,7 @@ class PCKYParser:
             elif rhs_len > 2:
                 raise ValueError('FATAL: non-CNF grammar detected, rule: %s' % production)
 
-    def get_parsing_trees(self, tokens, tagged=None, tree_head='TOP', debug=False):
+    def get_parsing_trees(self, tokens, tagged=None, tree_head='TOP', pruning_enabled=True, debug=False):
         """
         Returns a list of possible parsing trees of the given sentence, ordered with highest probability first
         :param tokens: a list of tokens representing the sentence to parse
@@ -131,8 +131,9 @@ class PCKYParser:
 
                 # Prune all trees except the end node
                 # (we want to maximize our chances of finding the top node)
-                if not (start_index == 0 and end_index == tokens_count):
-                    trees_to_keep = trees_to_keep[0:20]
+                if pruning_enabled:
+                    if not (start_index == 0 and end_index == tokens_count):
+                        trees_to_keep = trees_to_keep[0:20]
 
                 # Keep the trees in the previous row
                 table[start_index][end_index] = trees_to_keep
@@ -167,7 +168,7 @@ class PCKYParser:
             print("Total trees: %d" % len(trees))
         return trees
 
-    def get_parsing_tree(self, tokens, tagged=None, tree_head='TOP', debug=False):
+    def get_parsing_tree(self, tokens, tagged=None, tree_head='TOP', pruning_enabled=True, debug=False):
         """
         Returns the parsing tree, of the given sentence, with the highest probability
         :param tokens: a list of tokens representing the sentence to parse
@@ -177,7 +178,7 @@ class PCKYParser:
         :return:
         """
 
-        trees = self.get_parsing_trees(tokens, tagged, tree_head, debug)
+        trees = self.get_parsing_trees(tokens, tagged, tree_head, pruning_enabled, debug)
 
         if len(trees) > 0:
             # Need to extract the most probable (but trees are already sorted with highest probability)
