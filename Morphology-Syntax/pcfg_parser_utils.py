@@ -180,7 +180,7 @@ def clean_dataset(dataset, enable_prune_tree=False, enable_dash_rules_replace=Fa
         entry = "(ROOT%s" % entry[1:]
         t = nltk.Tree.fromstring(entry)
 
-        if prune_tree:
+        if enable_prune_tree:
             # Prune tree (remove -NONE- subtrees)
             prune_tree(t)
 

@@ -104,6 +104,8 @@ if __name__ == '__main__':
 
     use_treebank_as_tagging_corpus = True
     pcky_pruning_enabled = True
+    enable_prune_tree = True
+    enable_dash_rules_replace = True
 
     parallel = True
     # --- End Options ---
@@ -123,9 +125,9 @@ if __name__ == '__main__':
         test_set = pcfg_parser_utils.load_corpus(pcfg_test_set_path)
         # Convert dataset tags
         # NOTE: Should NOT be already clean, otherwise it won't work !!
-        training_set = pcfg_parser_utils.clean_dataset(training_set, enable_prune_tree=True,
-                                                       enable_dash_rules_replace=True)
-        test_set = pcfg_parser_utils.clean_dataset(test_set, enable_prune_tree=True, enable_dash_rules_replace=True)
+        training_set = pcfg_parser_utils.clean_dataset(training_set, enable_prune_tree=enable_prune_tree,
+                                                       enable_dash_rules_replace=enable_dash_rules_replace)
+        test_set = pcfg_parser_utils.clean_dataset(test_set, enable_prune_tree=enable_prune_tree, enable_dash_rules_replace=enable_dash_rules_replace)
         testset_ratio = len(test_set) / len(training_set)
         dataset = training_set + test_set
     else:
@@ -140,7 +142,7 @@ if __name__ == '__main__':
             exit()
 
         # Convert dataset tags
-        dataset = pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=True, enable_dash_rules_replace=True)
+        dataset = pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=enable_prune_tree, enable_dash_rules_replace=enable_dash_rules_replace)
 
         # Split dataset
         logger.info("Splitting dataset")
@@ -165,14 +167,14 @@ if __name__ == '__main__':
     # Create parser
     parser = pcky_parser.PCKYParser(pcfg, None)
 
-    logger.info("Loading PoS Tagger")
-
     if use_treebank_as_tagging_corpus == True:
+        logger.info("Loading PoS Tagger from TreeBank")
         tagger_corpus = pcfg_parser_utils.get_tagger_corpus_from_treebank(dataset)
         corpus_tags = pos_tagging_utils.get_corpus_tags(tagger_corpus)
         pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags,
                                                     special_words=pos_tagging.PoSTagger.default_special_words)
     else:
+        logger.info("Loading PoS Tagger from default corpus")
         pos_tagger = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll",
                                                               special_words=pos_tagging.PoSTagger.default_special_words)
         # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
