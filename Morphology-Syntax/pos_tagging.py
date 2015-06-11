@@ -4,6 +4,7 @@ import abc
 import pickle
 import os.path
 import pos_tagging_utils
+from enum import Enum
 
 
 class PoSTagger:
@@ -37,9 +38,15 @@ class PoSTagger:
                              '-': '.', ':': '.', ';': '.', '!': '.',
                              '?': '.'}
 
+class UnknownWordsStrategy(Enum):
+        disabled = 0
+        noun = 1
+        noun_or_pnoun = 2
 
 class MostFrequentTagger(PoSTagger):
+
     _opt_words_ignore_case = 0
+    _opt_unknown_words_strategy = 1
     _special_words = dict()
 
     def __init__(self, corpus, pos_tags, special_words=None):
@@ -71,6 +78,14 @@ class MostFrequentTagger(PoSTagger):
     @opt_words_ignore_case.setter
     def opt_words_ignore_case(self, x):
         self._opt_words_ignore_case = x
+
+    @property
+    def opt_unknown_words_strategy(self):
+        return self._opt_unknown_words_strategy
+
+    @opt_unknown_words_strategy.setter
+    def opt_unknown_words_strategy(self, x):
+        self._opt_unknown_words_strategy = x
 
     def get_sentence_tags(self, sentence=None, words=None):
         # The strategy is to find the most frequent Tag associated
@@ -115,12 +130,17 @@ class MostFrequentTagger(PoSTagger):
                 if word in self._special_words:
                     tags[i] = self._special_words[word]
 
-                # Unknown words are defaulted to NOUN or PROPN
-                # WARNING: PROPN tag is forced during loading
-                elif word.isupper():
-                    tags[i] = 'PROPN'
-                else:
+                elif self._opt_unknown_words_strategy==UnknownWordsStrategy.noun_or_pnoun:
+                    # Unknown words are defaulted to NOUN or PROPN
+                    # WARNING: PROPN tag is forced during loading
+                    if word.isupper():
+                        tags[i] = 'PROPN'
+                    else:
+                        tags[i] = 'NOUN'
+                elif self._opt_unknown_words_strategy==UnknownWordsStrategy.noun:
                     tags[i] = 'NOUN'
+                else:
+                    tags[i] = self.pos_tags[0]
 
             i += 1
 
@@ -265,18 +285,6 @@ class HMMTagger(PoSTagger):
         # TODO: Check that out
         if c == 0:
             return 0
-
-        return x / c
-
-    @staticmethod
-    def div_smooth(x, c, pos_tags_len):
-        # P(A|B) and P(B) = 0 makes no sense
-        # TODO: Check that out
-        if c == 0:
-            return 0
-
-        # if x == 0:
-        # return 1 / pos_tags_len
 
         return x / c
 

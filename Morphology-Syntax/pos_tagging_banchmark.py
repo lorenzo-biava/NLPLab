@@ -1,6 +1,6 @@
 __author__ = 'BLN'
 
-from pos_tagging import MostFrequentTagger, HMMTagger
+from pos_tagging import MostFrequentTagger, HMMTagger, UnknownWordsStrategy
 import pos_tagging_utils
 import multiprocessing, time
 import sys
@@ -37,6 +37,7 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
     print('%s started tagging !' % tagger_name)
 
     start_time = time.time()
+    progress_time = time.time()
     PROGRESS_INTERVAL = 5
     sentence_count = 0
     corpus_len = len(corpus)
@@ -49,14 +50,14 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
             tags_count, correct_tags_count = compare_sentence(corpus_tags, tags, bad_tags, tags_count,
                                                               correct_tags_count)
             results[tagger_name] = (tags_count, correct_tags_count, bad_tags)
-            if (time.time() - start_time >= PROGRESS_INTERVAL):
+            if (time.time() - progress_time >= PROGRESS_INTERVAL):
                 perc = (sentence_count / corpus_len) * 100
                 print('{:s}: {:d}/{:d} ({:.0f}%)'.format(tagger_name, sentence_count, corpus_len, perc))
-                start_time = time.time()
+                progress_time = time.time()
                 #print(tagger_name+": "+sentence_count+"/"+corpus_len+" ("+strround((sentence_count/corpus_len)*100)+"%)")
                 #print(tags)
 
-    print('{:s}: ENDED !'.format(tagger_name))
+    print('{:s}: ENDED ! Total time: {:.2f}s'.format(tagger_name, time.time() - start_time))
     results[id] = {'tags_count': tags_count, 'correct_tags_count': correct_tags_count, 'bad_tags': bad_tags}
 
 if __name__ == '__main__':
@@ -70,13 +71,14 @@ if __name__ == '__main__':
     #corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
     corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
 
-    test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)
+    test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)#, tag_field_index=4)
 
     hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
     hmm_tagger.opt_words_smoothing = 1
     hmm_tagger.opt_words_ignore_case = 0
     mf_tagger = MostFrequentTagger(corpus, corpus_tags)
     mf_tagger.opt_words_ignore_case = 0
+    mf_tagger.opt_unknown_words_strategy = UnknownWordsStrategy.noun_or_pnoun
     hmm_tags_count = 0
     hmm_bad_tags = []
     hmm_correct_tags_count = 0
