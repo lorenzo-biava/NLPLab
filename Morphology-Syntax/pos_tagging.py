@@ -467,6 +467,14 @@ class HMMTagger(PoSTagger):
 
         return words, tags, [list(a) for a in zip(words, tag_values)]
 
+    @staticmethod
+    def from_file(path, **kwargs):
+        """
+        Utility method to automatically build the tagger from a given corpus file.
+        """
+        corpus, _ = pos_tagging_utils.load_corpus(path)
+        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+        return HMMTagger(corpus, corpus_tags, **kwargs)
 
 def viterbi(obs, states, start_p, trans_p, emit_p):
     """

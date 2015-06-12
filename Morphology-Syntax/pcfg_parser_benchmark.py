@@ -62,7 +62,8 @@ def test_sentence(i, entry, kwargs):
 
     tagged = [tuple(row) for row in tagged]
     pcky_pruning_enabled = kwargs['pcky_pruning_enabled']
-    parsing_tree = kwargs['parser'].get_parsing_tree(tokens, tagged, tree_head='ROOT', pruning_enabled=pcky_pruning_enabled, debug=False)
+    parsing_tree = kwargs['parser'].get_parsing_tree(tokens, tagged, tree_head='ROOT',
+                                                     pruning_enabled=pcky_pruning_enabled, debug=False)
 
     if parsing_tree is None:
         # logger.debug("WARNING: No parsing tree found !")
@@ -79,6 +80,7 @@ def test_sentence(i, entry, kwargs):
 
     return {"index": i, "value": parsing_tree}
 
+
 def create_training_test_set(dataset, testset_ratio):
     training_set, test_set = split_dataset(dataset, testset_ratio)
 
@@ -93,6 +95,7 @@ def create_training_test_set(dataset, testset_ratio):
             f.write(entry)
             f.write('\n')
 
+
 if __name__ == '__main__':
 
     # Execution options
@@ -106,6 +109,7 @@ if __name__ == '__main__':
     pcky_pruning_enabled = True
     enable_prune_tree = True
     enable_dash_rules_replace = True
+    use_mf_tagger = True
 
     parallel = True
     # --- End Options ---
@@ -127,7 +131,8 @@ if __name__ == '__main__':
         # NOTE: Should NOT be already clean, otherwise it won't work !!
         training_set = pcfg_parser_utils.clean_dataset(training_set, enable_prune_tree=enable_prune_tree,
                                                        enable_dash_rules_replace=enable_dash_rules_replace)
-        test_set = pcfg_parser_utils.clean_dataset(test_set, enable_prune_tree=enable_prune_tree, enable_dash_rules_replace=enable_dash_rules_replace)
+        test_set = pcfg_parser_utils.clean_dataset(test_set, enable_prune_tree=enable_prune_tree,
+                                                   enable_dash_rules_replace=enable_dash_rules_replace)
         testset_ratio = len(test_set) / len(training_set)
         dataset = training_set + test_set
     else:
@@ -142,7 +147,8 @@ if __name__ == '__main__':
             exit()
 
         # Convert dataset tags
-        dataset = pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=enable_prune_tree, enable_dash_rules_replace=enable_dash_rules_replace)
+        dataset = pcfg_parser_utils.clean_dataset(dataset, enable_prune_tree=enable_prune_tree,
+                                                  enable_dash_rules_replace=enable_dash_rules_replace)
 
         # Split dataset
         logger.info("Splitting dataset")
@@ -171,13 +177,18 @@ if __name__ == '__main__':
         logger.info("Loading PoS Tagger from TreeBank")
         tagger_corpus = pcfg_parser_utils.get_tagger_corpus_from_treebank(dataset)
         corpus_tags = pos_tagging_utils.get_corpus_tags(tagger_corpus)
-        pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags,
-                                                    special_words=pos_tagging.PoSTagger.default_special_words)
+        if use_mf_tagger:
+            pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags,
+                                                        special_words=pos_tagging.PoSTagger.default_special_words)
+        else:
+            pos_tagger = pos_tagging.HMMTagger(tagger_corpus, corpus_tags)
     else:
         logger.info("Loading PoS Tagger from default corpus")
-        pos_tagger = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll",
-                                                              special_words=pos_tagging.PoSTagger.default_special_words)
-        # pos_tagger = pos_tagging.HMMTagger.fromFile("data\\it\\it-universal-train.conll")
+        if use_mf_tagger:
+            pos_tagger = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll",
+                                                                  special_words=pos_tagging.PoSTagger.default_special_words)
+        else:
+            pos_tagger = pos_tagging.HMMTagger.from_file("data\\it\\it-universal-train.conll")
 
     # Test entries in Test set
     logger.info("Testing sentences")
@@ -226,7 +237,8 @@ if __name__ == '__main__':
 
             tagged = [tuple(row) for row in tagged]
 
-            parses = parser.get_parsing_tree(tokens, tagged, tree_head='ROOT', pruning_enabled=pcky_pruning_enabled, debug=False)
+            parses = parser.get_parsing_tree(tokens, tagged, tree_head='ROOT', pruning_enabled=pcky_pruning_enabled,
+                                             debug=False)
 
             if (len(parses) < 1):
                 logger.debug("WARNING: No parsing tree found !")
@@ -243,6 +255,8 @@ if __name__ == '__main__':
                     if (parse == t):
                         correct += 1
 
+    logger.info("Work complete ! (%f s)" % (time.time() - started))
+
     found = 0
     for entry in result_set:
         if entry != '':
@@ -251,7 +265,6 @@ if __name__ == '__main__':
     logger.info("Parse found: %d/%d (%d%%)" % (found, test_set_size, math.floor(found / test_set_size * 100)))
     logger.info("Parse correct: %d/%d (%d%%)" % (correct, test_set_size, math.floor(correct / test_set_size * 100)))
 
-    logger.info("Work complete ! (%f s)" % (time.time() - started))
 
     # Output test set & result set for scoring (Evalb)
     with open('tmp\\parse.train', 'w', encoding='utf-8') as f:
