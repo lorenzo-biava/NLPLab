@@ -1,12 +1,18 @@
 __author__ = 'BLN'
 
+import multiprocessing
+import time
+
 from pos_tagging import MostFrequentTagger, HMMTagger, UnknownWordsStrategy
 import pos_tagging_utils
-import multiprocessing, time
-import sys
 
 
 def get_word_tag_list(sentence):
+    """
+    Returns the list of words and the list of tags of the given sentence
+    :param sentence: a sentence in form of a list of tuples (Word, Tag)
+    :return:
+    """
     tags = []
     words = []
     for line in sentence:
@@ -17,6 +23,15 @@ def get_word_tag_list(sentence):
 
 
 def compare_sentence(tags, test_tags, bad_tags, tags_count=0, correct_tags_count=0):
+    """
+    Compares the sentence tagging output, computing tagging statistics and bad tags statistics
+    :param tags: a list of gold tagged words in the form (Word, Tag)
+    :param test_tags: a list of test tagged words in the form (Word, Tag)
+    :param bad_tags: a list in which will be appended the test tag if incorrect
+    :param tags_count: an incremental counter of tag already tested
+    :param correct_tags_count: an incremental counter of tag already tested and correct
+    :return:
+    """
     for tag in zip(tags, test_tags):
         tags_count += 1
         # Correct tags in tag[0], test_tags in tag[1]
@@ -31,6 +46,15 @@ def compare_sentence(tags, test_tags, bad_tags, tags_count=0, correct_tags_count
 
 
 def tagger_benchmark(results, id, tagger_name, tagger, corpus):
+    """
+    Execute the benchmark process, tagging each sentence in the corpus and getting the statistics
+    :param results: an array in which store the result for the current tagger id
+    :param id: see results
+    :param tagger_name: the name of the current tagger
+    :param tagger: a tagger to execute the benchmark with
+    :param corpus: a corpus in the form of a list of sentences (list of (Word, Tag))
+    :return:
+    """
     tags_count = 0
     bad_tags = []
     correct_tags_count = 0
@@ -47,11 +71,14 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
         if len(sentence) > 0:
             corpus_tags, words = get_word_tag_list(sentence)
 
+            # Execute tagging
             (words, tags_index, tags) = tagger.get_sentence_tags(words=words)
+            # Compare results
             tags_count, correct_tags_count = compare_sentence(corpus_tags, tags, bad_tags, tags_count,
                                                               correct_tags_count)
-            results[tagger_name] = (tags_count, correct_tags_count, bad_tags)
-            if (time.time() - progress_time >= PROGRESS_INTERVAL):
+
+            # Log progress if needed
+            if time.time() - progress_time >= PROGRESS_INTERVAL:
                 perc = (sentence_count / corpus_len) * 100
                 print('{:s}: {:d}/{:d} ({:.0f}%)'.format(tagger_name, sentence_count, corpus_len, perc))
                 progress_time = time.time()
@@ -59,8 +86,9 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
                 # print(tags)
 
     print('{:s}: ENDED ! Total time: {:.2f}s'.format(tagger_name, time.time() - start_time))
-    results[id] = {'tags_count': tags_count, 'correct_tags_count': correct_tags_count, 'bad_tags': bad_tags}
 
+    # Store results for the current tagger
+    results[id] = {'tags_count': tags_count, 'correct_tags_count': correct_tags_count, 'bad_tags': bad_tags}
 
 def get_bad_tags_stats(bad_tags):
     """
@@ -77,25 +105,33 @@ def get_bad_tags_stats(bad_tags):
             stats[key] = 1
     return sorted(stats.items(), key=lambda e: e[1], reverse=True)
 
+
 if __name__ == '__main__':
 
     corpus_path = "data\\it\\it-universal-train.conll"
     test_corpus_path = "data\\it\\it-universal-test.conll"
 
+    # Load training set
     corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path)  # , tag_field_index=4)
 
+    # Extract tags from corpus or use the complete Universal PoS tag set
     # IMPORTANT NOTE: Accuracy may vary depending by PoS tags order !
     # corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
     corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
 
+    # Load test set
     test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)  # , tag_field_index=4)
 
+    # Initialize taggers
+    # HMM with options
     hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
     hmm_tagger.opt_words_smoothing = 1
     hmm_tagger.opt_words_ignore_case = 0
+    # FM with options
     mf_tagger = MostFrequentTagger(corpus, corpus_tags)
     mf_tagger.opt_words_ignore_case = 0
     mf_tagger.opt_unknown_words_strategy = UnknownWordsStrategy.noun_or_pnoun
+    # Reset statistics
     hmm_tags_count = 0
     hmm_bad_tags = []
     hmm_correct_tags_count = 0
@@ -105,6 +141,7 @@ if __name__ == '__main__':
 
     enable_bad_tags_stats_output = 0
 
+    # Setup parallel benchmarks execution
     manager = multiprocessing.Manager()
     results = manager.dict()
 
@@ -118,10 +155,11 @@ if __name__ == '__main__':
     proc_hmm.start()
     proc_mf.start()
 
+    # Wait for processes completion
     proc_hmm.join()
     proc_mf.join()
 
-    # print(results.items())
+    # Print results
     print("HMMTagger:")
     hmm_correct_tags_count = results[0]['correct_tags_count']
     hmm_tags_count = results[0]['tags_count']
@@ -140,6 +178,7 @@ if __name__ == '__main__':
     print('\tAccuracy: %.2f%%' % (mf_correct_tags_count / mf_tags_count * 100))
     print('\tGood tags: %d, Bad Tags: %d' % (mf_correct_tags_count, len(results[1]['bad_tags'])))
     print('\tBad tags (correct, computed): %s' % results[1]['bad_tags'])
+    bad_tags_stats = get_bad_tags_stats(results[1]['bad_tags'])
     if enable_bad_tags_stats_output:
         [print('%s|%s|%d' % (k[0], k[1], v)) for k, v in bad_tags_stats]
     else:
@@ -147,5 +186,6 @@ if __name__ == '__main__':
 
     print("Total tags: %d" % mf_tags_count)
 
+    # Print total time stats
     elapsed_time = time.time() - start_time
     print("Total time: %.2fs" % elapsed_time)

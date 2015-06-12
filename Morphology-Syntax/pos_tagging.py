@@ -2,28 +2,41 @@ __author__ = 'BLN'
 
 import abc
 import pickle
+import re
 import os.path
 import pos_tagging_utils
 from enum import Enum
 
+"""
+This module contains implementation of some PoS taggers
+"""
+
 
 class PoSTagger:
+    """
+    This is a template class for PoS taggers
+    """
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
     def get_sentence_tags(self, sentence=None, words=None):
-        """Returns the tags associated with the words in the sentence"""
+        """
+        Returns the tags associated with the words in the sentence
+        :param sentence: a sentence in form of a string
+        :param words: a sentence already tokenized in words
+        :return:
+        """
         pass
 
     @staticmethod
     def tokenize_sentence(sentence):
         """
-
-        :rtype : list(str)
+        A tokenizer utility, just splitting the sentence with spaces and punctuation symbols (i.e. .,!?;:_-)
+        :param sentence: a sentence in form of a string
+        :return:
         """
-        return sentence.split()
-        # Improve
-        # return re.split(';|.|,|',sentence)
+
+        return re.findall(r"[\w']+|[.,!?;:_-]", sentence)
 
     @staticmethod
     def tag_index(tag, tags):
@@ -37,19 +50,31 @@ class PoSTagger:
                              '-LSB-': '-LRB-', '-RSB-': '-RRB-',
                              '-': '.', ':': '.', ';': '.', '!': '.',
                              '?': '.'}
+    """
+    Some default special words to tag with the specified tag (mostly punctuation symbols)
+    """
+
 
 class UnknownWordsStrategy(Enum):
-        disabled = 0
-        noun = 1
-        noun_or_pnoun = 2
+    """
+    An enum for MostFrequentTagger unknown words tagging strategy
+    """
+    disabled = 0
+    noun = 1
+    noun_or_pnoun = 2
+
 
 class MostFrequentTagger(PoSTagger):
-
-    _opt_words_ignore_case = 0
-    _opt_unknown_words_strategy = 1
-    _special_words = dict()
+    """
+    A PoS tagger based on the most frequent tag of a word.
+    """
 
     def __init__(self, corpus, pos_tags, special_words=None):
+
+        self._opt_words_ignore_case = 0
+        self._opt_unknown_words_strategy = 1
+        self._special_words = special_words
+
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
         self.pos_tags = pos_tags
@@ -64,12 +89,29 @@ class MostFrequentTagger(PoSTagger):
         # WARNING: Force PROPN for Proper Nouns rule
         if 'PROPN' not in self.pos_tags:
             self.pos_tags.append('PROPN')
-        # WARNING: Force . for .uation
+        # WARNING: Force . for punctuation
         if '.' not in self.pos_tags:
             self.pos_tags.append('.')
 
         self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
         self.corpus = corpus
+
+        # Compute Word-Tag frequency
+        self._words_tag_freq_dict=dict()
+        """Dictionary indexed by Words, containing dictionaries indexed by Tags with frequency of Word-Tag combination"""
+
+        for sentence in self.corpus:
+            for entry in sentence:
+                word = entry[0]
+                tag = entry[1]
+                if self._opt_words_ignore_case:
+                    word = word.lower()
+
+                if word not in self._words_tag_freq_dict:
+                    # Tags sub-dict must be created
+                    self._words_tag_freq_dict[word] = dict([(tag, 0) for tag in self.pos_tags])
+
+                self._words_tag_freq_dict[word][tag] += 1
 
     @property
     def opt_words_ignore_case(self):
@@ -90,61 +132,51 @@ class MostFrequentTagger(PoSTagger):
     def get_sentence_tags(self, sentence=None, words=None):
         # The strategy is to find the most frequent Tag associated
         # to each given Word, looking into the corpus.
-        # If a Word is unknown a default one is assigned
+        # If a Word is unknown the tag is assigned depending on the specified strategy
 
+        # Tokenize sentence if needed
         if words is None:
             words = self.tokenize_sentence(sentence)
 
         if self._opt_words_ignore_case:
             words = [x.lower() for x in words]
 
-        # Dictionary indexed by Words, containing dictionaries indexed by Tags
-        words_freq_dict = dict([(w, dict((t, 0) for i, t in enumerate(self.pos_tags))) for i, w in enumerate(words)])
-
+        # Initialize empty tag for each word
         tags = [None for i in range(len(words))]
 
-        for sentence in self.corpus:
-            for tag in sentence:
-                if tag[0] in words_freq_dict:
-                    # Ignore case option ?
-                    if self._opt_words_ignore_case:
-                        word_entry = words_freq_dict[tag[0].lower()]
-                    else:
-                        word_entry = words_freq_dict[tag[0]]
-                    word_entry[tag[1]] += 1
-
         i = 0
+        # Tag each word
         for word in words:
             # Ignore case option ?
             if self._opt_words_ignore_case:
-                word_entry = words_freq_dict[word.lower()]
+                word = word.lower()
+
+            if word in self._words_tag_freq_dict:
+                word_entry = self._words_tag_freq_dict[word]
+
+                # Get most frequent tag
+                tags[i] = [k for k, v in word_entry.items() if v == max(word_entry.values())][0]
             else:
-                word_entry = words_freq_dict[word]
+                # Unknown words
 
-            # Get most frequent tag
-            tags[i] = [k for k, v in word_entry.items() if v == max(word_entry.values())][0]
-
-            # Unknown words
-            if word_entry[tags[i]] == 0:
                 # Check if it's a special word
-                if word in self._special_words:
+                if self._special_words is not None and word in self._special_words:
                     tags[i] = self._special_words[word]
-
-                elif self._opt_unknown_words_strategy==UnknownWordsStrategy.noun_or_pnoun:
+                # Otherwise, apply UnknownWordsStrategy
+                elif self._opt_unknown_words_strategy == UnknownWordsStrategy.noun_or_pnoun:
                     # Unknown words are defaulted to NOUN or PROPN
                     # WARNING: PROPN tag is forced during loading
                     if word.isupper():
                         tags[i] = 'PROPN'
                     else:
                         tags[i] = 'NOUN'
-                elif self._opt_unknown_words_strategy==UnknownWordsStrategy.noun:
+                elif self._opt_unknown_words_strategy == UnknownWordsStrategy.noun:
                     tags[i] = 'NOUN'
                 else:
                     tags[i] = self.pos_tags[0]
-
             i += 1
 
-        # Transform Tags in a list of indexes based on the given Tag list
+        # Transform Tags into a list of indexes based on the given Tag list
         tags_indexes = [self.pos_tags.index(t) for t in tags]
 
         # Return the list of Words, the list of Tag indexes and a dictionary with (Word -> Tag)
@@ -156,11 +188,12 @@ class MostFrequentTagger(PoSTagger):
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
         return MostFrequentTagger(corpus, corpus_tags, **kwargs)
 
+
 class HMMTagger(PoSTagger):
-    _opt_words_smoothing = 1
-    _opt_words_ignore_case = 0
 
     def __init__(self, corpus, pos_tags, corpus_digest=None):
+        self._opt_words_smoothing = 1
+        self._opt_words_ignore_case = 0
         self.corpus = corpus
 
         if corpus_digest is not None:
@@ -172,12 +205,12 @@ class HMMTagger(PoSTagger):
         # with open(corpus_cache_file, 'rb') as f:
         # self.pos_tags = self._from_pickle_order_list(pickle.load(f))
         # self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
-        #         self.countTag = self._from_pickle_order_list(pickle.load(f))
-        #         self.probTagStart = self._from_pickle_order_list(pickle.load(f))
-        #         self.probTagCons = self._from_pickle_order_list(pickle.load(f))
+        # self.countTag = self._from_pickle_order_list(pickle.load(f))
+        # self.probTagStart = self._from_pickle_order_list(pickle.load(f))
+        # self.probTagCons = self._from_pickle_order_list(pickle.load(f))
         # else:
         # Calculate and then cache corpus probabilities for future reuse
-        #         self.pos_tags = postaggingutils.get_corpus_tags(corpus)
+        # self.pos_tags = postaggingutils.get_corpus_tags(corpus)
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
         self.pos_tags = pos_tags
@@ -336,11 +369,11 @@ class HMMTagger(PoSTagger):
         # if tag[0] in words_dict:
         # if self._opt_words_ignore_case:
         # word_index = words_dict[tag[0].lower()]
-        #             else:
-        #                 word_index = words_dict[tag[0]]
+        # else:
+        # word_index = words_dict[tag[0]]
         #
-        #             words_count[word_index] += 1
-        #             countWordWithTag[word_index][self.tag_index(tag[1], self.pos_tags_dict)] += 1
+        # words_count[word_index] += 1
+        # countWordWithTag[word_index][self.tag_index(tag[1], self.pos_tags_dict)] += 1
 
         #probWordWithTag = [words_freq_dict[w] for w in words]
         #probWordWithTag[:] = [[self.div_smooth(x, self.countTag[i], len(self.pos_tags)) for (i, x) in enumerate(r)] for
@@ -428,6 +461,7 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     # print_dptable(V)
     (prob, state) = max((V[n][y], y) for y in states)
     return (prob, path[state])
+
 
 def print_dptable(V):
     """
