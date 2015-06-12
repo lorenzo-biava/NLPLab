@@ -130,7 +130,7 @@ if __name__ == '__main__':
     # FM with options
     mf_tagger = MostFrequentTagger(corpus, corpus_tags)
     mf_tagger.opt_words_ignore_case = 0
-    mf_tagger.opt_unknown_words_strategy = UnknownWordsStrategy.noun_or_pnoun
+    mf_tagger.opt_unknown_words_strategy = UnknownWordsStrategy.noun
     # Reset statistics
     hmm_tags_count = 0
     hmm_bad_tags = []

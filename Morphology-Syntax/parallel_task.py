@@ -15,16 +15,16 @@ def do_tasks_in_chunk(from_index, to_index, task_list, task_func, kwargs):
 
 
 class ParallelTasks:
-    _result_holder = dict()
-    _logger = None
-    _progress_interval = 5
-    _last_progress = 0
-    _started = 0
-    _ended = 0
-    _processes = 0
 
     def __init__(self, label=None, progress_interval=5, processes=0):
         self._result_holder = dict()
+        self._logger = None
+        self._progress_interval = 5
+        self._last_progress = 0
+        self._started = 0
+        self._ended = 0
+        self._processes = 0
+
         log_name = 'ParallelTasks'
         if label is not None:
             log_name += '-' + label

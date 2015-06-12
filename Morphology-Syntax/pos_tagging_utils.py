@@ -1,6 +1,7 @@
 __author__ = 'BLN'
 
 import hashlib
+import collections
 
 universal_treebank_pos_tags = (
     'ADJ', 'ADP', 'ADV', 'AUX', 'CONJ', 'DET', 'INTJ', 'NOUN', 'NUM', 'PART', 'PRON', 'PROPN', '.', 'SCONJ', 'SYM',
@@ -49,7 +50,7 @@ def get_corpus_tags(corpus):
     :param corpus: the corpus in the form of list of sentences (list of (Word, Tag))
     :return:
     """
-    tags = dict()
+    tags = collections.OrderedDict()
 
     for sentence in corpus:
         for line in sentence:
