@@ -70,15 +70,17 @@ class MostFrequentTagger(PoSTagger):
     A PoS tagger based on the most frequent tag of a word.
     """
 
-    def __init__(self, corpus, pos_tags, special_words=None):
+    def __init__(self, corpus, pos_tags, special_words=None, noun_tag='NOUN', propn_tag='PROPN'):
 
         self._opt_words_ignore_case = 0
         self._opt_unknown_words_strategy = 1
         self._special_words = special_words
+        self._noun_tag = noun_tag
+        self._propn_tag = propn_tag
 
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
-        self.pos_tags = pos_tags
+        self.pos_tags = list([(tag) for tag in pos_tags])
 
         if special_words is not None:
             self._special_words = special_words
@@ -88,8 +90,8 @@ class MostFrequentTagger(PoSTagger):
                     self.pos_tags.append(tag)
 
         # WARNING: Force PROPN for Proper Nouns rule
-        if 'PROPN' not in self.pos_tags:
-            self.pos_tags.append('PROPN')
+        if self._propn_tag not in self.pos_tags:
+            self.pos_tags.append(self._propn_tag)
         # WARNING: Force . for punctuation
         if '.' not in self.pos_tags:
             self.pos_tags.append('.')
@@ -168,11 +170,11 @@ class MostFrequentTagger(PoSTagger):
                     # Unknown words are defaulted to NOUN or PROPN
                     # WARNING: PROPN tag is forced during loading
                     if word.isupper():
-                        tags[i] = 'PROPN'
+                        tags[i] = self._propn_tag
                     else:
-                        tags[i] = 'NOUN'
+                        tags[i] = self._noun_tag
                 elif self._opt_unknown_words_strategy == UnknownWordsStrategy.noun:
-                    tags[i] = 'NOUN'
+                    tags[i] = self._noun_tag
                 else:
                     tags[i] = self.pos_tags[0]
             i += 1
@@ -203,54 +205,22 @@ class HMMTagger(PoSTagger):
         self._opt_words_ignore_case = 0
         self.corpus = corpus
 
-        if corpus_digest is not None:
-            corpus_cache_file = "tmp_corpus_" + corpus_digest
-
-        # TODO: Restore once fixed order change during dump/load
-        # Load cached corpus probabilities if existent
-        # if os.path.isfile(corpus_cache_file):
-        # with open(corpus_cache_file, 'rb') as f:
-        # self.pos_tags = self._from_pickle_order_list(pickle.load(f))
-        # self.pos_tags_dict = dict([(v, i) for i, v in enumerate(pos_tags)])
-        # self.countTag = self._from_pickle_order_list(pickle.load(f))
-        # self.probTagStart = self._from_pickle_order_list(pickle.load(f))
-        # self.probTagCons = self._from_pickle_order_list(pickle.load(f))
-        # else:
-        # Calculate and then cache corpus probabilities for future reuse
-        # self.pos_tags = postaggingutils.get_corpus_tags(corpus)
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
         self.pos_tags = pos_tags
 
-        # WARNING: Force PROPN for Proper Nouns rule
-        if 'PROPN' not in self.pos_tags:
-            self.pos_tags.append('PROPN')
-        # WARNING: Force . for .uation
-        if '.' not in self.pos_tags:
-            self.pos_tags.append('.')
-
         self.pos_tags_dict = collections.OrderedDict([(v, i) for i, v in enumerate(pos_tags)])
-        self.countTag, self.probTagStart, self.probTagCons = self.get_corpus_transition_probability()
-        #
-        # with open(corpus_cache_file, 'wb') as f:
-        #         pickle.dump(self._to_pickle_order_list(self.pos_tags), f)
-        #         pickle.dump(self._to_pickle_order_list(self.countTag), f)
-        #         pickle.dump(self._to_pickle_order_list(self.probTagStart), f)
-        #         pickle.dump(self._to_pickle_order_list(self.probTagCons), f)
+        # Train the HMM
+        self.count_tag, self.prob_tag_start, self.prob_tag_cons = self.get_corpus_transition_probability()
 
     @staticmethod
-    def from_file(path):
+    def from_file(path, **kwargs):
+        """
+        Utility method to automatically build the tagger from a given corpus file.
+        """
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-        return HMMTagger(corpus, corpus_tags)
-
-    @staticmethod
-    def _to_pickle_order_list(obj):
-        return dict([(i, v) for i, v in enumerate(obj)])
-
-    @staticmethod
-    def _from_pickle_order_list(obj):
-        return list([v for k, v in obj.items()])
+        return HMMTagger(corpus, corpus_tags, **kwargs)
 
     @property
     def opt_words_smoothing(self):
@@ -287,12 +257,13 @@ class HMMTagger(PoSTagger):
         count_tag_start = [0 for i in range(pos_tags_len)]
         """The number of occurrences of a tag starting the sentence"""
 
-        sentences = 0
+        count_sentence = 0
 
+        # Compute Sentence Count, Tag Count, Start Tag Count and Consecutive Tags Count
         for sentence in self.corpus:
             # Starting new sentence -> reset previous tag
             prevTag = None
-            sentences += 1
+            count_sentence += 1
 
             for tag in sentence:
                 # Add a tag occurrence
@@ -307,45 +278,33 @@ class HMMTagger(PoSTagger):
                         self.tag_index(prevTag[1], self.pos_tags_dict)] += 1
                 prevTag = tag
 
-        # return count_tag, count_tag_start, count_tag_cons
         prob_tag_start = count_tag_start[:]
-        """The probability of a starting tag (i.e. P(t_i|start))"""
-        prob_tag_start[:] = [x / sentences for x in prob_tag_start]
-        # for item in prob_tag_start:
-        # item=item/sentences
+        """The probability of a starting tag (i.e. P(t_i|start) = C(start, t_i)/# sentence)"""
+        prob_tag_start[:] = [x / count_sentence for x in prob_tag_start]
+        # Build dictionary Tag -> Start Prob
+        prob_tag_start = dict([(self.pos_tags[i], prob_tag_start[i]) for i in range(0, len(self.pos_tags))])
 
         prob_tag_cons = count_tag_cons[:]
-        """The probability of tag i follows tag i-1 (i.e. P(t_i+1|t_i))"""
+        """The probability of tag i following tag i-1 (i.e. P(t_i|t_i-1) = C(t_i-1,t_i)/C(t_i-1))"""
+        # WARNING: Using utility method div to avoid /0 in case of tag not in corpus
         prob_tag_cons[:] = [[self.div(x, count_tag[i]) for (i, x) in enumerate(r)] for (c, r) in
                             enumerate(prob_tag_cons)]
-        # for row in prob_tag_cons:
-        # i = 0
-        # for item in count_tag_cons:
-        # item/=count_tag[i]
-        # i+=1
-
-        # smooth tag probabilities (USELESS ?)
-        # s = (1 - sum(prob_tag_start)) / sum([(x == 0) for x in prob_tag_start])
-        # prob_tag_start = [(x if x != 0 else s) for x in prob_tag_start]
+        # Build dictionary Tag_from -> Tag_to Transition Prob
+        prob_tag_cons = dict(
+            [(self.pos_tags[i],
+              dict([(self.pos_tags[c], prob_tag_cons[c][i]) for c in range(0, len(self.pos_tags))])) for i in
+             range(0, len(self.pos_tags))]
+        )
 
         return count_tag, prob_tag_start, prob_tag_cons
 
     @staticmethod
     def div(x, c):
-        # P(A|B) and P(B) = 0 makes no sense
-        # TODO: Check that out
+        # P(A|B) and P(B) = 0 makes no sense -> return 0
         if c == 0:
             return 0
 
         return x / c
-
-    # def tag_index(self, tag):
-    # if tag in self.pos_tags:
-    # return self.pos_tags.index(tag)
-    # else:
-    # if tag in ('.', ','):
-    # return self.pos_tags.index('.')
-
 
     def _get_word_with_tag_count(self, words):
         """
@@ -359,6 +318,7 @@ class HMMTagger(PoSTagger):
         words_tag_freq_dict = collections.OrderedDict(
             [(w, collections.OrderedDict((t, 0) for i, t in enumerate(self.pos_tags))) for i, w in enumerate(words)])
 
+        # Compute Word Count and Word-Tag Count
         for sentence in self.corpus:
             for tag in sentence:
                 if tag[0] in words_freq_dict:
@@ -378,57 +338,27 @@ class HMMTagger(PoSTagger):
 
     def get_corpus_emission_probability(self, words):
         """
-        Return the corpus emission probability (i.e. P(w_i|t_j))
-        :param words: a list of words
+        Return the corpus emission probability (i.e. P(w_i|t_j)) for the given sentence
+        :param words: sentence as a list of words
         :returns:
         """
 
         if self._opt_words_ignore_case:
             words = [x.lower() for x in words]
 
-        # words_dict = dict([(v, i) for i, v in enumerate(words)])
-
+        # Get Word Count and Word-Tag Count
         words_freq_dict, words_tag_freq_dict = self._get_word_with_tag_count(words)
 
-        # |words| rows x |tags| cols
-        # countWordWithTag = [[0 for i in range(len(self.countTag))] for i in range(len(words))]
-        # words_count = [0 for i in range(len(words))]
-        # for sentence in self.corpus:
-        # for tag in sentence:
-        # # Word in corpus is in words
-        # if tag[0] in words_dict:
-        # if self._opt_words_ignore_case:
-        # word_index = words_dict[tag[0].lower()]
-        # else:
-        # word_index = words_dict[tag[0]]
-        #
-        # words_count[word_index] += 1
-        # countWordWithTag[word_index][self.tag_index(tag[1], self.pos_tags_dict)] += 1
-
-        # prob_word_with_tag = [words_freq_dict[w] for w in words]
-        #prob_word_with_tag[:] = [[self.div_smooth(x, self.countTag[i], len(self.pos_tags)) for (i, x) in enumerate(r)] for
-        #                      (c, r) in
-        #                      enumerate(prob_word_with_tag)]
-
+        # Compute sentence's Word-Tag Probability (i.e. P(w_i|t_i) = C(t_i, w_i)/C(t_i))
         # Copy dictionary for (Word -> (Tag -> Word_Tag_Probability))
         # and convert to probability (Word_Tag_Probability = Word_Tag_Count/Tag_Count)
         prob_word_with_tag = list([
             collections.OrderedDict(
-                [(tag, self.div(w_t_freq, self.countTag[self.pos_tags_dict[tag]]))
+                [(tag, self.div(w_t_freq, self.count_tag[self.pos_tags_dict[tag]]))
                  for tag, w_t_freq in words_tag_freq_dict[word].items()]
             )
             for word in words])
-
-        # prob_word_with_tag = dict([(word,
-        #                         dict(
-        #                             [(tag, self.div(w_t_freq, self.countTag[self.pos_tags_dict[tag]]))
-        #                              for tag, w_t_freq in w_t_f_dict.items()]
-        #                         )
-        #                         ) for word, w_t_f_dict in words_tag_freq_dict.items()])
-
-        # for word, word_tag_freq_in_dict in words_tag_freq_dict:
-        #     for tag, word_tag_freq in word_tag_freq_in_dict:
-        #         word_tag_freq = self.div(word_tag_freq/self.countTag[self.pos_tags_dict[tag]])
+        """A list of Word-Tag Probability, ordered for words in current sentence"""
 
         # VERY IMPORTANT !! Smooth unknown words
         # Current smoothing function -> uniform distribution over tags
@@ -442,48 +372,39 @@ class HMMTagger(PoSTagger):
 
         return prob_word_with_tag
 
+
     def get_sentence_tags(self, sentence=None, words=None):
         # Compute tags using Hidden Markov Model
 
         if words is None:
             words = self.tokenize_sentence(sentence)
 
-        # Array_Word( Tag -> Word_Tag_Probability )
+        # Compute corpus Emission Probability for the current sentence
+        # List of Word( Tag -> Word_Tag_Probability )
         prob_emission = self.get_corpus_emission_probability(words)
+
         # Adapt for input to Viterbi algorithm
-        prob_emission_for_viterbi = [list(
-            [f for t, f in
-             sorted([(self.pos_tags_dict[k], v) for k, v in tags_dict.items()])
-             ]
-        ) for tags_dict in prob_emission]
+        # Translate into dictionary Tag -> (Words -> Emission Prob)
+        prob_emission_for_viterbi = dict(
+            [(pos_tag, dict([(words[c], prob_emission[c][pos_tag]) for c in range(0, len(words))])) for pos_tag in
+             self.pos_tags]
+        )
 
-        w = [i for i in range(len(words))]
-        t = [i for i in range(len(self.pos_tags))]
+        # Compute best tag sequence with Viterbi algorithm
+        (prob, tags) = viterbi(words, self.pos_tags, self.prob_tag_start, self.prob_tag_cons,
+                               prob_emission_for_viterbi)
 
-        (prob, tags) = viterbi(w, t, self.probTagStart, [list(x) for x in zip(*self.probTagCons)],
-                               [list(x) for x in zip(*prob_emission_for_viterbi)])
+        return words, tags, [list(a) for a in zip(words, tags)]
 
-        tag_values = [self.pos_tags[t] for t in tags]
-
-        return words, tags, [list(a) for a in zip(words, tag_values)]
-
-    @staticmethod
-    def from_file(path, **kwargs):
-        """
-        Utility method to automatically build the tagger from a given corpus file.
-        """
-        corpus, _ = pos_tagging_utils.load_corpus(path)
-        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-        return HMMTagger(corpus, corpus_tags, **kwargs)
 
 def viterbi(obs, states, start_p, trans_p, emit_p):
     """
     Returns the most probable path into the given graph, with the related probability, using Viterbi algorithm
-    :param obs:
-    :param states:
-    :param start_p:
-    :param trans_p:
-    :param emit_p:
+    :param obs: a list of observations
+    :param states: a list of possible states
+    :param start_p: starting state probability for each state (in form of a dictionary State -> Prob)
+    :param trans_p: transition probability for each state (in form of a dictionary State_from -> (State_to -> Prob))
+    :param emit_p: emission probability for each (obs, state) pair (in form of a dictionary State-> (Observation -> Prob))
     :return:
     """
     V = [{}]

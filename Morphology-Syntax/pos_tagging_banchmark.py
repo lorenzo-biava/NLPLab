@@ -90,6 +90,7 @@ def tagger_benchmark(results, id, tagger_name, tagger, corpus):
     # Store results for the current tagger
     results[id] = {'tags_count': tags_count, 'correct_tags_count': correct_tags_count, 'bad_tags': bad_tags}
 
+
 def get_bad_tags_stats(bad_tags):
     """
     Return a frequency count for bad tags, ordered descending
@@ -111,26 +112,41 @@ if __name__ == '__main__':
     corpus_path = "data\\it\\it-universal-train.conll"
     test_corpus_path = "data\\it\\it-universal-test.conll"
 
+    # Execution Options
+    opt_words_smoothing_enabled = True
+    opt_words_ignore_case = False
+    opt_unknown_words_strategy = UnknownWordsStrategy.noun
+    opt_auto_tags_enabled = True
+    opt_use_fine_grained_tags_enabled = False
+    enable_bad_tags_stats_output = False
+
+    if opt_use_fine_grained_tags_enabled:
+        tag_field_index = 4
+    else:
+        tag_field_index = 3
+
     # Load training set
-    corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path)  # , tag_field_index=4)
+    corpus, corpus_digest = pos_tagging_utils.load_corpus(corpus_path, tag_field_index=tag_field_index)
 
     # Extract tags from corpus or use the complete Universal PoS tag set
     # IMPORTANT NOTE: Accuracy may vary depending by PoS tags order !
-    # corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
-    corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
+    if opt_auto_tags_enabled:
+        corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
+    else:
+        corpus_tags = pos_tagging_utils.universal_treebank_pos_tags
 
     # Load test set
-    test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path)  # , tag_field_index=4)
+    test_corpus, _ = pos_tagging_utils.load_corpus(test_corpus_path, tag_field_index=tag_field_index)
 
     # Initialize taggers
     # HMM with options
     hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
-    hmm_tagger.opt_words_smoothing = 1
-    hmm_tagger.opt_words_ignore_case = 0
+    hmm_tagger.opt_words_smoothing = opt_words_smoothing_enabled
+    hmm_tagger.opt_words_ignore_case = opt_words_ignore_case
     # FM with options
-    mf_tagger = MostFrequentTagger(corpus, corpus_tags)
-    mf_tagger.opt_words_ignore_case = 0
-    mf_tagger.opt_unknown_words_strategy = UnknownWordsStrategy.noun
+    mf_tagger = MostFrequentTagger(corpus, corpus_tags)  # , noun_tag='NOUN', propn_tag='PNOUN')
+    mf_tagger.opt_words_ignore_case = opt_words_ignore_case
+    mf_tagger.opt_unknown_words_strategy = opt_unknown_words_strategy
     # Reset statistics
     hmm_tags_count = 0
     hmm_bad_tags = []
@@ -138,8 +154,6 @@ if __name__ == '__main__':
     mf_tags_count = 0
     mf_bad_tags = []
     mf_correct_tags_count = 0
-
-    enable_bad_tags_stats_output = 0
 
     # Setup parallel benchmarks execution
     manager = multiprocessing.Manager()
