@@ -106,7 +106,7 @@ if __name__ == '__main__':
     use_training_set_as_test_set = False
 
     use_treebank_as_tagging_corpus = True
-    pcky_pruning_enabled = True
+    pcky_pruning_enabled = False
     enable_prune_tree = True
     enable_dash_rules_replace = True
     use_mf_tagger = True
@@ -173,22 +173,27 @@ if __name__ == '__main__':
     # Create parser
     parser = pcky_parser.PCKYParser(pcfg, None)
 
+    # Create PoS tagger
     if use_treebank_as_tagging_corpus == True:
         logger.info("Loading PoS Tagger from TreeBank")
         tagger_corpus = pcfg_parser_utils.get_tagger_corpus_from_treebank(dataset)
         corpus_tags = pos_tagging_utils.get_corpus_tags(tagger_corpus)
         if use_mf_tagger:
             pos_tagger = pos_tagging.MostFrequentTagger(tagger_corpus, corpus_tags,
-                                                        special_words=pos_tagging.PoSTagger.default_special_words)
+                                                        special_words=pos_tagging.PoSTagger.default_special_words,
+                                                        opt_unknown_words_strategy=pos_tagging.UnknownWordsStrategy.morphit)
         else:
-            pos_tagger = pos_tagging.HMMTagger(tagger_corpus, corpus_tags)
+            pos_tagger = pos_tagging.HMMTagger(tagger_corpus, corpus_tags,
+                                               opt_smoothing_strategy=pos_tagging.SmoothingStrategy.morphit)
     else:
         logger.info("Loading PoS Tagger from default corpus")
         if use_mf_tagger:
             pos_tagger = pos_tagging.MostFrequentTagger.from_file("data\\it\\it-universal-train.conll",
-                                                                  special_words=pos_tagging.PoSTagger.default_special_words)
+                                                                  special_words=pos_tagging.PoSTagger.default_special_words,
+                                                                  opt_unknown_words_strategy=pos_tagging.UnknownWordsStrategy.morphit)
         else:
-            pos_tagger = pos_tagging.HMMTagger.from_file("data\\it\\it-universal-train.conll")
+            pos_tagger = pos_tagging.HMMTagger.from_file("data\\it\\it-universal-train.conll",
+                                                         opt_smoothing_strategy=pos_tagging.SmoothingStrategy.morphit)
 
     # Test entries in Test set
     logger.info("Testing sentences")

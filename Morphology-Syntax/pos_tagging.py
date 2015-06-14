@@ -6,7 +6,9 @@ import re
 import os.path
 import pos_tagging_utils
 import collections
+import morphit_reader
 from enum import Enum
+from decimal import Decimal
 
 """
 This module contains implementation of some PoS taggers
@@ -63,6 +65,7 @@ class UnknownWordsStrategy(Enum):
     disabled = 0
     noun = 1
     noun_or_pnoun = 2
+    morphit = 3
 
 
 class MostFrequentTagger(PoSTagger):
@@ -70,13 +73,20 @@ class MostFrequentTagger(PoSTagger):
     A PoS tagger based on the most frequent tag of a word.
     """
 
-    def __init__(self, corpus, pos_tags, special_words=None, noun_tag='NOUN', propn_tag='PROPN'):
+    def __init__(self, corpus, pos_tags, special_words=None, noun_tag='NOUN', propn_tag='PROPN',
+                 opt_words_ignore_case=False, opt_unknown_words_strategy=UnknownWordsStrategy.noun):
+        print('Initiliazing MostFrequentTagger (opt_words_ignore_case=%s, opt_unknown_words_strategy=%s)' % (
+            opt_words_ignore_case, opt_unknown_words_strategy))
 
-        self._opt_words_ignore_case = 0
-        self._opt_unknown_words_strategy = 1
         self._special_words = special_words
         self._noun_tag = noun_tag
         self._propn_tag = propn_tag
+        self._opt_unknown_words_strategy = opt_unknown_words_strategy
+        self._opt_words_ignore_case = opt_words_ignore_case
+
+        if opt_unknown_words_strategy == UnknownWordsStrategy.morphit:
+            self.unknown_words_tags = morphit_reader.load_morphit("data\\it\\morph-it.txt",
+                                                                  morphit_reader.convert_tag_morphit_universal)
 
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
@@ -115,22 +125,6 @@ class MostFrequentTagger(PoSTagger):
                     self._words_tag_freq_dict[word] = collections.OrderedDict([(tag, 0) for tag in self.pos_tags])
 
                 self._words_tag_freq_dict[word][tag] += 1
-
-    @property
-    def opt_words_ignore_case(self):
-        return self._opt_words_ignore_case
-
-    @opt_words_ignore_case.setter
-    def opt_words_ignore_case(self, x):
-        self._opt_words_ignore_case = x
-
-    @property
-    def opt_unknown_words_strategy(self):
-        return self._opt_unknown_words_strategy
-
-    @opt_unknown_words_strategy.setter
-    def opt_unknown_words_strategy(self, x):
-        self._opt_unknown_words_strategy = x
 
     def get_sentence_tags(self, sentence=None, words=None):
         # The strategy is to find the most frequent Tag associated
@@ -175,6 +169,22 @@ class MostFrequentTagger(PoSTagger):
                         tags[i] = self._noun_tag
                 elif self._opt_unknown_words_strategy == UnknownWordsStrategy.noun:
                     tags[i] = self._noun_tag
+                elif self._opt_unknown_words_strategy == UnknownWordsStrategy.morphit:
+                    # MorphIt smoothing
+                    if word not in self.unknown_words_tags and word.lower() not in self.unknown_words_tags:
+                        tags[i] = self._noun_tag
+                    else:
+                        if word not in self.unknown_words_tags:
+                            word = word.lower()
+
+                        word_tags = list(self.unknown_words_tags[word]['tags'].keys())
+                        # Default to noun if present, or no MorphIt tags are available in current tag set
+                        if self._noun_tag in word_tags or sum(
+                                [(1 if t in self.pos_tags else 0) for t in word_tags]) == 0:
+                            tags[i] = self._noun_tag
+                        else:
+                            # TODO: What tag to return ?
+                            tags[i] = word_tags[0]
                 else:
                     tags[i] = self.pos_tags[0]
             i += 1
@@ -195,15 +205,30 @@ class MostFrequentTagger(PoSTagger):
         return MostFrequentTagger(corpus, corpus_tags, **kwargs)
 
 
+class SmoothingStrategy(Enum):
+    disabled = 0
+    uniform_tags = 1
+    morphit = 2
+
+
 class HMMTagger(PoSTagger):
     """
     A stochastic tagger based on Hidden Markov Model.
     """
 
-    def __init__(self, corpus, pos_tags, corpus_digest=None):
-        self._opt_words_smoothing = 1
-        self._opt_words_ignore_case = 0
+
+    def __init__(self, corpus, pos_tags, corpus_digest=None, opt_words_ignore_case=False,
+                 opt_smoothing_strategy=SmoothingStrategy.uniform_tags):
+        print('Initiliazing HMMTagger (opt_words_ignore_case=%s, opt_smoothing_strategy=%s)' % (
+            opt_words_ignore_case, opt_smoothing_strategy))
+
+        self._opt_smoothing_strategy = opt_smoothing_strategy
+        self._opt_words_ignore_case = opt_words_ignore_case
         self.corpus = corpus
+
+        if opt_smoothing_strategy == SmoothingStrategy.morphit:
+            self.unknown_words_tags = morphit_reader.load_morphit("data\\it\\morph-it.txt",
+                                                                  morphit_reader.convert_tag_morphit_universal)
 
         if type(pos_tags) is tuple:
             pos_tags = [item for item in pos_tags]
@@ -221,22 +246,6 @@ class HMMTagger(PoSTagger):
         corpus, _ = pos_tagging_utils.load_corpus(path)
         corpus_tags = pos_tagging_utils.get_corpus_tags(corpus)
         return HMMTagger(corpus, corpus_tags, **kwargs)
-
-    @property
-    def opt_words_smoothing(self):
-        return self._opt_words_smoothing
-
-    @opt_words_smoothing.setter
-    def opt_words_smoothing(self, x):
-        self._opt_words_smoothing = x
-
-    @property
-    def opt_words_ignore_case(self):
-        return self._opt_words_ignore_case
-
-    @opt_words_ignore_case.setter
-    def opt_words_ignore_case(self, x):
-        self._opt_words_ignore_case = x
 
     def get_corpus_transition_probability(self):
         """
@@ -362,12 +371,34 @@ class HMMTagger(PoSTagger):
 
         # VERY IMPORTANT !! Smooth unknown words
         # Current smoothing function -> uniform distribution over tags
-        if self._opt_words_smoothing:
+        if self._opt_smoothing_strategy != SmoothingStrategy.disabled:
             i = 0
             for word in words:
                 if words_freq_dict[word] == 0:
-                    prob_word_with_tag[i] = collections.OrderedDict(
-                        [(tag, 1 / len(self.pos_tags)) for tag in prob_word_with_tag[i].keys()])
+                    # Smoothing strategy
+                    if self._opt_smoothing_strategy == SmoothingStrategy.morphit:
+                        # MorphIt smoothing
+                        if word not in self.unknown_words_tags and word.lower() not in self.unknown_words_tags:
+                            prob_word_with_tag[i] = collections.OrderedDict(
+                                [(tag, 0.1 if tag == 'NOUN' else float(0)) for tag in prob_word_with_tag[i].keys()])
+                        else:
+                            if word not in self.unknown_words_tags:
+                                word = word.lower()
+
+                            div = max(1, len(self.unknown_words_tags[word]['tags']))
+                            prob_word_with_tag[i] = collections.OrderedDict(
+                                [(tag,
+                                  1 / div if tag in self.unknown_words_tags[word]['tags'] else float(0)) for tag in
+                                 prob_word_with_tag[i].keys()])
+
+                            # If all tags are null -> revert to Uniform tags smoothing
+                            if sum([v for v in prob_word_with_tag[i].values()]):
+                                prob_word_with_tag[i] = collections.OrderedDict(
+                                    [(tag, 1.0 / len(self.pos_tags)) for tag in prob_word_with_tag[i].keys()])
+                    else:
+                        # Uniform tags smoothing
+                        prob_word_with_tag[i] = collections.OrderedDict(
+                            [(tag, 1.0 / len(self.pos_tags)) for tag in prob_word_with_tag[i].keys()])
                 i += 1
 
         return prob_word_with_tag
@@ -409,11 +440,12 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
     """
     V = [{}]
     path = {}
-
     # Initialize base cases (t == 0)
     for y in states:
-        V[0][y] = start_p[y] * emit_p[y][obs[0]]
+        # IMPORTANT: need more decimal precision than floats !
+        V[0][y] = Decimal(start_p[y]) * Decimal(emit_p[y][obs[0]])
         path[y] = [y]
+
 
     # Run Viterbi for t > 0
     for t in range(1, len(obs)):
@@ -421,7 +453,8 @@ def viterbi(obs, states, start_p, trans_p, emit_p):
         newpath = {}
 
         for y in states:
-            (prob, state) = max((V[t - 1][y0] * trans_p[y0][y] * emit_p[y][obs[t]], y0) for y0 in states)
+            (prob, state) = max(
+                (V[t - 1][y0] * Decimal(trans_p[y0][y]) * Decimal(emit_p[y][obs[t]]), y0) for y0 in states)
             V[t][y] = prob
             newpath[y] = path[state] + [y]
 

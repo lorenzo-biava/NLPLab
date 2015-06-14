@@ -3,7 +3,7 @@ __author__ = 'BLN'
 import multiprocessing
 import time
 
-from pos_tagging import MostFrequentTagger, HMMTagger, UnknownWordsStrategy
+from pos_tagging import MostFrequentTagger, HMMTagger, UnknownWordsStrategy, SmoothingStrategy
 import pos_tagging_utils
 
 
@@ -113,10 +113,13 @@ if __name__ == '__main__':
     test_corpus_path = "data\\it\\it-universal-test.conll"
 
     # Execution Options
-    opt_words_smoothing_enabled = True
     opt_words_ignore_case = False
-    opt_unknown_words_strategy = UnknownWordsStrategy.noun
-    opt_auto_tags_enabled = True
+    opt_unknown_words_strategy = UnknownWordsStrategy.morphit
+    opt_smoothing_strategy = SmoothingStrategy.morphit
+    opt_auto_tags_enabled = False
+    if opt_auto_tags_enabled and (
+                    opt_smoothing_strategy == SmoothingStrategy.morphit or opt_unknown_words_strategy == UnknownWordsStrategy.morphit):
+        print('WARNING, using opt_auto_tags_enabled with MorphIt. Might cause unexpected results !')
     opt_use_fine_grained_tags_enabled = False
     enable_bad_tags_stats_output = False
 
@@ -140,13 +143,11 @@ if __name__ == '__main__':
 
     # Initialize taggers
     # HMM with options
-    hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest)
-    hmm_tagger.opt_words_smoothing = opt_words_smoothing_enabled
-    hmm_tagger.opt_words_ignore_case = opt_words_ignore_case
+    hmm_tagger = HMMTagger(corpus, corpus_tags, corpus_digest, opt_smoothing_strategy=opt_smoothing_strategy,
+                           opt_words_ignore_case=opt_words_ignore_case)
     # FM with options
-    mf_tagger = MostFrequentTagger(corpus, corpus_tags)  # , noun_tag='NOUN', propn_tag='PNOUN')
-    mf_tagger.opt_words_ignore_case = opt_words_ignore_case
-    mf_tagger.opt_unknown_words_strategy = opt_unknown_words_strategy
+    mf_tagger = MostFrequentTagger(corpus, corpus_tags, opt_words_ignore_case=opt_words_ignore_case,
+                                   opt_unknown_words_strategy=opt_unknown_words_strategy)  # , noun_tag='NOUN', propn_tag='PNOUN')
     # Reset statistics
     hmm_tags_count = 0
     hmm_bad_tags = []
