@@ -330,13 +330,13 @@ class HMMTagger(PoSTagger):
         # Compute Word Count and Word-Tag Count
         for sentence in self.corpus:
             for tag in sentence:
-                if tag[0] in words_freq_dict:
-                    # Ignore case option ?
-                    if self._opt_words_ignore_case:
-                        word = tag[0].lower()
-                    else:
-                        word = tag[0]
+                # Ignore case option ?
+                if self._opt_words_ignore_case:
+                    word = tag[0].lower()
+                else:
+                    word = tag[0]
 
+                if word in words_freq_dict:
                     # Increment Word count
                     words_freq_dict[word] += 1
                     # Increment (Word -> Tag) count
