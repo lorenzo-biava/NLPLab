@@ -22,6 +22,7 @@ public class RocchioClassificationSample {
 	public static void main(String[] args) throws Exception {
 
 		boolean ita = false;
+		boolean useWSD = true;
 
 		String docDirPath;
 		Locale docLang;
@@ -34,9 +35,11 @@ public class RocchioClassificationSample {
 			docDirPath = DOCUMENT_DIR_PATH_EN;
 			docLang = DOCUMENTS_LANGUAGE_EN;
 		}
-		
+
 		List<Document> documents = RocchioClassificationBenchmark
-				.loadDocsInSubdirs(new File(docDirPath), docLang);
+				.loadDocsInSubdirs(new File(docDirPath));
+		RocchioClassificationBenchmark
+				.loadDocsTerms(documents, docLang, useWSD);
 
 		RocchioClassifier rocchio = new RocchioClassifier(documents, 0);
 

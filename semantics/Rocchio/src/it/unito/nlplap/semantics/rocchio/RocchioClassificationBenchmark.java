@@ -1,19 +1,32 @@
 package it.unito.nlplap.semantics.rocchio;
 
+import it.unito.nlplab.semantics.wsd.Sense;
+import it.unito.nlplab.semantics.wsd.WSD;
+import it.unito.nlplab.semantics.wsd.WSD.StopWordException;
 import it.unito.nlplap.semantics.rocchio.utils.Document;
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
 import it.unito.nlplap.semantics.utils.Utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Random;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
+import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
+import edu.stanford.nlp.ling.CoreLabel;
+import edu.stanford.nlp.pipeline.Annotation;
+import edu.stanford.nlp.pipeline.StanfordCoreNLP;
+import edu.stanford.nlp.util.CoreMap;
 
 public class RocchioClassificationBenchmark {
 
@@ -28,6 +41,7 @@ public class RocchioClassificationBenchmark {
 	public static void main(String[] args) throws Exception {
 
 		boolean ita = false;
+		boolean useWSD = false;
 
 		String docDirPath;
 		Locale docLang;
@@ -44,7 +58,8 @@ public class RocchioClassificationBenchmark {
 		}
 
 		docDir = new File(docDirPath);
-		dataSet = loadDocsInSubdirs(docDir, docLang);
+		dataSet = loadDocsInSubdirs(docDir);
+		loadDocsTerms(dataSet, docLang, useWSD);
 
 		double testsetRatio = 0.10;
 
@@ -79,6 +94,108 @@ public class RocchioClassificationBenchmark {
 		LOG.info(String.format(
 				"Total docs=%d, Correctly classified=%d, Badly classified=%d",
 				testSet.size(), correctCount, wrongCount));
+	}
+
+	private static StanfordCoreNLP pipeline;
+
+	/**
+	 * Computes the text in the document dataset, extracting terms/features.
+	 * @param docs
+	 * @param language
+	 * @param useWSD if true terms are WSD, lemmas are used otherwise.
+	 * @throws Exception
+	 */
+	public static void loadDocsTerms(List<Document> docs, Locale language,
+			boolean useWSD) throws Exception {
+
+		HashSet<String> terms;
+		if (useWSD) {
+			if (language != Locale.ENGLISH)
+				throw new IllegalArgumentException(
+						"WSD terms generation is currently supported only for English language");
+
+			final WSD wsd = new WSD(language);
+
+			// Get sentences
+			Properties props = new Properties();
+			// props.setProperty("annotators",
+			// "tokenize, ssplit, pos, lemma");
+			props.setProperty("annotators", "tokenize, ssplit");
+			if (pipeline == null)
+				pipeline = new StanfordCoreNLP(props);
+
+			Parallel.For(docs,
+			// The operation to perform with each item
+					new Parallel.Operation<Document>() {
+						public void perform(Document doc, int index, int total) {
+							try {
+								long startTime = System.currentTimeMillis();
+
+								HashSet<String> terms = new HashSet<String>();
+
+								// create an empty Annotation just with the
+								// given
+								// text
+								Annotation document = new Annotation(doc
+										.getText());
+
+								// run all Annotators on this text
+								pipeline.annotate(document);
+
+								List<CoreMap> sentences = document
+										.get(SentencesAnnotation.class);
+
+								// For each Sentence
+								for (CoreMap sentence : sentences) {
+									for (CoreLabel token : sentence
+											.get(TokensAnnotation.class)) {
+
+										String word = token
+												.get(TextAnnotation.class);
+										// // this is the POS tag of the token
+										// String pos =
+										// token.get(PartOfSpeechAnnotation.class);
+										try {
+											Sense s = wsd.getBestSense(word,
+													sentence.toString());
+
+											if (s != null)
+												terms.add("<" + s.getId() + ":"
+														+ s.getLemma() + ">");
+											else
+												terms.add("<NA:" + word + ">");
+										} catch (StopWordException e) {
+											// Skip this word as a stop word
+										}
+									}
+
+								}
+
+								doc.setTerms(terms);
+
+								LOG.info(String
+										.format("Loaded terms of doc %d, title '%s' (time: %s ms)",
+												index,
+												doc.getName(),
+												(System.currentTimeMillis() - startTime)));
+							} catch (Exception e) {
+								LOG.error(e);
+								throw new RuntimeException(e);
+							}
+						};
+					});
+		} else {
+			int i = 0;
+			for (Document doc : docs) {
+				terms = new HashSet<String>(FeatureVectorUtils.getLemmas(
+						doc.getText(), language));
+
+				LOG.info(String.format("Loading terms of doc %d, title '%s'",
+						++i, doc.getName()));
+
+				doc.setTerms(terms);
+			}
+		}
 	}
 
 	public static <T> void datasetSplit(List<T> dataSet, double testsetRatio,
@@ -147,40 +264,37 @@ public class RocchioClassificationBenchmark {
 				}
 				String text = Utils.fileToText(file);
 				documents.add(new Document(file.getName(), file
-						.getAbsolutePath(), text, FeatureVectorUtils.getLemmas(
-						text, locale), category));
+						.getAbsolutePath(), text, null, category));
 			}
 		}
 
 		return documents;
 	}
 
-	public static List<Document> loadDocsInSubdirs(File docDir, Locale locale)
+	public static List<Document> loadDocsInSubdirs(File docDir)
 			throws Exception {
-		LOG.info(String.format(
-				"Loading docs from folder '%s' and language '%s'",
-				docDir.getAbsolutePath(), locale.getLanguage()));
+		LOG.info(String.format("Loading docs from folder '%s'",
+				docDir.getAbsolutePath()));
 
 		List<Document> documents = new ArrayList<Document>();
 
-		// int limit = -400;
+		// int limit = 100;
 		int i = 0;
 		for (File dir : docDir.listFiles()) {
-			// if (limit > 10)
-			// break;
 
 			if (dir.isDirectory()) {
 				String category = dir.getName();
 
 				for (File file : dir.listFiles()) {
 					if (file.isFile() && file.getName().indexOf(".") != 0
-							/*&& file.length() > 0*/) {
+					/* && file.length() > 0 */) {
+						// if (--limit < 0)
+						// break;
 						i++;
 
 						String text = Utils.fileToText(file);
 						documents.add(new Document(file.getName(), file
-								.getAbsolutePath(), text, FeatureVectorUtils
-								.getLemmas(text, locale), category));
+								.getAbsolutePath(), text, null, category));
 
 						LOG.debug(String.format("Loading doc %d, title '%s'",
 								i, file.getName()));

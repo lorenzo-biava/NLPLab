@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.logging.log4j.LogManager;
@@ -40,7 +42,7 @@ public class WSD {
 	 * Holds already discovered sense with cleaned contexts (i.e. lemmatized or
 	 * something) for Word-PoS
 	 */
-	private Map<String, Map<String, List<Sense>>> senseCache = new HashMap<String, Map<String, List<Sense>>>();
+	private ConcurrentMap<String, ConcurrentMap<String, List<Sense>>> senseCache = new ConcurrentHashMap<String, ConcurrentMap<String, List<Sense>>>();
 
 	/**
 	 * 
@@ -65,6 +67,40 @@ public class WSD {
 
 	}
 
+	public Sense getBestSense(String word, String context) throws Exception {
+		return getBestSense(word, context, null);
+	}
+
+	public static class StopWordException extends RuntimeException {
+
+		public StopWordException() {
+			super();
+			// TODO Auto-generated constructor stub
+		}
+
+		public StopWordException(String message, Throwable cause,
+				boolean enableSuppression, boolean writableStackTrace) {
+			super(message, cause, enableSuppression, writableStackTrace);
+			// TODO Auto-generated constructor stub
+		}
+
+		public StopWordException(String message, Throwable cause) {
+			super(message, cause);
+			// TODO Auto-generated constructor stub
+		}
+
+		public StopWordException(String message) {
+			super(message);
+			// TODO Auto-generated constructor stub
+		}
+
+		public StopWordException(Throwable cause) {
+			super(cause);
+			// TODO Auto-generated constructor stub
+		}
+
+	}
+
 	/**
 	 * Returns the best sense for the given word and context (sentence in which
 	 * the word is in) or null. Both word and context will be cleaned
@@ -74,11 +110,16 @@ public class WSD {
 	 * @param context
 	 * @return
 	 * @throws Exception
+	 * @throws StopWordException
+	 *             if the clean word becomes null (it might be a stop word)
 	 */
-	public Sense getBestSense(String word, String context) throws Exception {
+	public Sense getBestSense(String word, String context, String pos)
+			throws StopWordException, Exception {
 
 		// Clean original word
 		String cleanWord = cleaner.cleanText(word);
+		if (cleanWord.length() < 1)
+			throw new StopWordException(word);
 
 		// Clean original word's context
 		HashSet<String> cleanContext = new HashSet<String>();
@@ -87,15 +128,20 @@ public class WSD {
 		}
 
 		// Get word's best PoS tag
-		String pos = "n";
-		try {
-			pos = RiTa.getPosTags(cleanWord, true)[0];
-		} catch (Exception e) {
+		if (pos == null) {
+			pos = "n";
+			try {
+				pos = RiTa.getPosTags(cleanWord, true)[0];
+				if (pos.equals("-"))
+					pos = "n";
+			} catch (Exception e) {
+			}
 		}
 
-		LOG.info(String
-				.format("Calculating best sense for word '%s' (originally '%s'), PoS '%s' and context '%s'",
-						word, cleanWord, pos, context));
+		if (LOG.isDebugEnabled())
+			LOG.debug(String
+					.format("Calculating best sense for word '%s' (originally '%s'), PoS '%s' and context '%s'",
+							cleanWord, word, pos, context));
 
 		// Compute best sense
 		Sense s = getBestSenseWithLeskAlgorithm(cleanWord, cleanContext, pos);
@@ -159,7 +205,7 @@ public class WSD {
 	private List<Sense> getSenses(String word, String pos) throws Exception {
 
 		// Check if senses are already cached
-		Map<String, List<Sense>> wordCache = null;
+		ConcurrentMap<String, List<Sense>> wordCache = null;
 		List<Sense> senses = null;
 		if ((wordCache = senseCache.get(word)) != null) {
 			if ((senses = wordCache.get(pos)) != null)
@@ -171,10 +217,10 @@ public class WSD {
 			}
 		} else {
 			// Create cache Word-Pos entry
-			wordCache = new HashMap<String, List<Sense>>();
-			wordCache.put(pos, senses);
-			senseCache.put(word, wordCache);
+			wordCache = new ConcurrentHashMap<String, List<Sense>>();
 			senses = new ArrayList<Sense>();
+			wordCache.put(pos, senses);
+			senseCache.put(word, wordCache);			
 		}
 
 		// Retrieve senses
