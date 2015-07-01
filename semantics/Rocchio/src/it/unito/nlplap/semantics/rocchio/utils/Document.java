@@ -4,9 +4,8 @@ import it.unito.nlplap.semantics.rocchio.RocchioClassificationBenchmark.Classifi
 import it.unito.nlplap.semantics.utils.MutableDouble;
 import it.unito.nlplap.semantics.utils.MutableInt;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
@@ -16,13 +15,13 @@ public class Document implements ClassificationClassAware<String> {
 	private static final Logger LOG = LogManager.getLogger(Document.class);
 
 	private String name, path, text, category;
-	private List<String> terms = new ArrayList<String>();
+	private HashSet<String> terms = new HashSet<String>();
 	private Map<String, MutableInt> termCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableInt> collectionTermCount = new HashMap<String, MutableInt>();
 	private Map<String, MutableDouble> collectionTermFrequency = new HashMap<String, MutableDouble>();
 	private Map<String, MutableDouble> collectionTermWeight = new HashMap<String, MutableDouble>();
 
-	public Document(String name, String path, String text, List<String> terms,
+	public Document(String name, String path, String text, HashSet<String> terms,
 			String category) {
 		super();
 		this.name = name;
@@ -106,11 +105,11 @@ public class Document implements ClassificationClassAware<String> {
 		this.collectionTermWeight = collectionTermWeight;
 	}
 
-	public List<String> getTerms() {
+	public HashSet<String> getTerms() {
 		return terms;
 	}
 
-	public void setTerms(List<String> terms) {
+	public void setTerms(HashSet<String> terms) {
 		this.terms = terms;
 
 		if (terms != null) {
