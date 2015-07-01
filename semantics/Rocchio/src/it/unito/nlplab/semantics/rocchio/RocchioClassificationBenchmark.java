@@ -1,9 +1,9 @@
-package it.unito.nlplap.semantics.rocchio;
+package it.unito.nlplab.semantics.rocchio;
 
+import it.unito.nlplab.semantics.rocchio.utils.Document;
 import it.unito.nlplab.semantics.wsd.Sense;
 import it.unito.nlplab.semantics.wsd.WSD;
 import it.unito.nlplab.semantics.wsd.WSD.StopWordException;
-import it.unito.nlplap.semantics.rocchio.utils.Document;
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
 import it.unito.nlplap.semantics.utils.Utils;
 
@@ -41,7 +41,7 @@ public class RocchioClassificationBenchmark {
 	public static void main(String[] args) throws Exception {
 
 		boolean ita = false;
-		boolean useWSD = false;
+		boolean useWSD = true;
 
 		String docDirPath;
 		Locale docLang;

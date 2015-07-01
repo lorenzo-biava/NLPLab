@@ -228,6 +228,7 @@ public class WSD {
 		for (int id : senseIds) {
 			Sense sense = new Sense();
 			sense.setId("" + id);
+			sense.setName(wn.getDescription(id));
 			sense.setGloss(wn.getGloss(id));
 			sense.setExamples(Arrays.asList(wn.getExamples(id)));
 

@@ -1,6 +1,6 @@
-package it.unito.nlplap.semantics.rocchio;
+package it.unito.nlplab.semantics.rocchio;
 
-import it.unito.nlplap.semantics.rocchio.utils.Document;
+import it.unito.nlplab.semantics.rocchio.utils.Document;
 
 import java.io.File;
 import java.util.List;

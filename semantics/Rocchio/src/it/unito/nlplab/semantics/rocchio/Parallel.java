@@ -1,4 +1,4 @@
-package it.unito.nlplap.semantics.rocchio;
+package it.unito.nlplab.semantics.rocchio;
 
 import java.util.Collection;
 import java.util.LinkedList;
@@ -10,7 +10,7 @@ import java.util.concurrent.Executors;
 public class Parallel {
     private static final int NUM_CORES = Runtime.getRuntime().availableProcessors();
 
-    private static final ExecutorService forPool = Executors.newFixedThreadPool(NUM_CORES * 2);
+    private static final ExecutorService forPool = Executors.newFixedThreadPool(NUM_CORES);
 
     public static <T> void For(final Iterable<T> elements, final Operation<T> operation) {
         try {

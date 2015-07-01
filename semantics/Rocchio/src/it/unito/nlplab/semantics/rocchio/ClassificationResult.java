@@ -1,4 +1,4 @@
-package it.unito.nlplap.semantics.rocchio;
+package it.unito.nlplab.semantics.rocchio;
 
 public class ClassificationResult {
 	private String bestClass;

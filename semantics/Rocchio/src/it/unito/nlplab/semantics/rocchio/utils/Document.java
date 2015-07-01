@@ -1,6 +1,6 @@
-package it.unito.nlplap.semantics.rocchio.utils;
+package it.unito.nlplab.semantics.rocchio.utils;
 
-import it.unito.nlplap.semantics.rocchio.RocchioClassificationBenchmark.ClassificationClassAware;
+import it.unito.nlplab.semantics.rocchio.RocchioClassificationBenchmark.ClassificationClassAware;
 import it.unito.nlplap.semantics.utils.MutableDouble;
 import it.unito.nlplap.semantics.utils.MutableInt;
 
