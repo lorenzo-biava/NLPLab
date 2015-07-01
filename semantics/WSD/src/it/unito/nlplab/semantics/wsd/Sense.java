@@ -1,6 +1,7 @@
 package it.unito.nlplab.semantics.wsd;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 import edu.stanford.nlp.util.StringUtils;
@@ -8,13 +9,15 @@ import edu.stanford.nlp.util.StringUtils;
 public class Sense {
 	private String name;
 	private String id;
+	private String lemma;
 	private List<String> glosses = new ArrayList<String>();
 	private List<String> examples = new ArrayList<String>();
+	private HashSet<String> context = new HashSet<String>();
 
 	public String getName() {
 		return name;
 	}
-
+ 
 	public void setName(String name) {
 		this.name = name;
 	}
@@ -25,6 +28,14 @@ public class Sense {
 
 	public void setId(String id) {
 		this.id = id;
+	}
+
+	public String getLemma() {
+		return lemma;
+	}
+
+	public void setLemma(String lemma) {
+		this.lemma = lemma;
 	}
 
 	public String getGloss() {
@@ -53,6 +64,18 @@ public class Sense {
 
 	public void setExamples(List<String> examples) {
 		this.examples = examples;
+	}
+	
+	/**
+	 * Get context words already cleaned (i.e. tokenized, stopwords removed, lemmatized)
+	 * @return
+	 */
+	public HashSet<String> getContext() {
+		return context;
+	}
+
+	public void setContext(HashSet<String> context) {
+		this.context = context;
 	}
 
 	@Override
