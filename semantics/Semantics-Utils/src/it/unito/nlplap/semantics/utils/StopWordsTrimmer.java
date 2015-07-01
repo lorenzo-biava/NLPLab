@@ -109,7 +109,7 @@ public class StopWordsTrimmer {
 		if (stopwords == null)
 			stopwords = loadStopWords(datasetPath);
 
-		return trim(words, datasetPath);
+		return trim(words, stopwords);
 	}
 
 	private static Map<String, String> loadStopWords(String filePath)
