@@ -8,6 +8,10 @@ import java.util.Scanner;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 
+/**
+ * A lemmatizer based on MorphIt.
+ *
+ */
 public class MorphItLemmatizer {
 
 	public static final String MORPHIT_PATH = "morph-it_048_UTF8.txt";

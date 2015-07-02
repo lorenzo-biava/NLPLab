@@ -11,6 +11,12 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * Represents a Document to classify. So it contains document data (name, path,
+ * content, category) and also feature collections (terms, termsFrequency,
+ * termsWeight, etc.).
+ *
+ */
 public class Document implements ClassificationClassAware<String> {
 	private static final Logger LOG = LogManager.getLogger(Document.class);
 
@@ -21,8 +27,8 @@ public class Document implements ClassificationClassAware<String> {
 	private Map<String, MutableDouble> collectionTermFrequency = new HashMap<String, MutableDouble>();
 	private Map<String, MutableDouble> collectionTermWeight = new HashMap<String, MutableDouble>();
 
-	public Document(String name, String path, String text, HashSet<String> terms,
-			String category) {
+	public Document(String name, String path, String text,
+			HashSet<String> terms, String category) {
 		super();
 		this.name = name;
 		this.path = path;
@@ -61,7 +67,7 @@ public class Document implements ClassificationClassAware<String> {
 	public String getClassificationClass() {
 		return category;
 	}
-	
+
 	public String getCategory() {
 		return category;
 	}
@@ -109,12 +115,18 @@ public class Document implements ClassificationClassAware<String> {
 		return terms;
 	}
 
+	/**
+	 * TermCount is automatically computed based on given terms.
+	 * 
+	 * @param terms
+	 */
 	public void setTerms(HashSet<String> terms) {
 		this.terms = terms;
 
 		if (terms != null) {
 			if (terms.size() == 0)
-				LOG.warn(String.format("Document '%s' has no terms !", this.name));
+				LOG.warn(String.format("Document '%s' has no terms !",
+						this.name));
 			getTermCount().clear();
 			// Term count
 			for (String term : terms) {

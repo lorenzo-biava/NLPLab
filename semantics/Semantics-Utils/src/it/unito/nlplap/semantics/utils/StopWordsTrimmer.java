@@ -11,6 +11,10 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Scanner;
 
+/**
+ * Trims stop words from the text.
+ *
+ */
 public class StopWordsTrimmer {
 
 	public static final String DEFAULT_DATASET_FILE = "stop_words_EN.txt";
@@ -127,6 +131,8 @@ public class StopWordsTrimmer {
 		return trim(words, stopwords);
 	}
 
+	/* Private methods */
+	
 	private static Map<String, String> loadStopWords(String filePath)
 			throws FileNotFoundException {
 		Map<String, String> stopWords = new HashMap<String, String>();

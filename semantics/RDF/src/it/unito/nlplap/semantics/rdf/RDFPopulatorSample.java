@@ -1,7 +1,6 @@
 package it.unito.nlplap.semantics.rdf;
 
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
-import it.unito.nlplap.semantics.utils.Utils;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -86,19 +85,16 @@ public class RDFPopulatorSample {
 	}
 
 	public static void main(String[] args) throws Exception {
-		start();
-	}
-
-	public static void start() throws Exception {
 
 		// create an empty Model
 		Model model = ModelFactory.createDefaultModel();
 
+		// Load docs
 		File[] docs = new File(DOCS_DIR).listFiles();
 
 		int anakinCreator = 2;
 		for (File doc : docs) {
-			// Extracting features
+			// Extracting doc features
 			DocFeatures docFeatures = extractDocFeatures(doc);
 
 			if (anakinCreator > 0) {
@@ -109,7 +105,6 @@ public class RDFPopulatorSample {
 			// create the resource
 			// and add the properties cascading style
 
-			/* Resource newDoc = */
 			model.createResource(docFeatures.getUri())
 					.addProperty(DC.title, docFeatures.getTitle())
 					.addProperty(DC.subject, docFeatures.getSubject())
@@ -119,10 +114,17 @@ public class RDFPopulatorSample {
 					.addProperty(DC.publisher, docFeatures.getPublisher());
 		}
 
+		// Save RDF model to file
 		model.write(System.out);
 		model.write(new FileOutputStream(new File(RDF_FILE)));
 	}
 
+	/**
+	 * Extract documents features from file
+	 * @param doc
+	 * @return
+	 * @throws Exception
+	 */
 	public static DocFeatures extractDocFeatures(File doc) throws Exception {
 		DocFeatures docFeatures = new DocFeatures();
 
@@ -150,16 +152,19 @@ public class RDFPopulatorSample {
 				docFeatures.setDate(line);
 		}
 
-		Map<String, Integer> feat = FeatureVectorUtils.getFeatureVector(
+		// Extract summarization terms
+		// Get ordered lemmas from doc content, filtered by PoS (only Nouns)
+		Map<String, Integer> summarizingFeat = FeatureVectorUtils.getFeatureVector(
 				contentBuilder.toString(), Locale.ENGLISH,
 				Arrays.asList(new String[] { "NN", "NNS", "NNP", "NNPS"/*, "JJ", "JJR", "JJS"*/}));
 		//feat = Utils.sortByComparator(feat, true);
 
 		List<String> feats = new ArrayList<String>();
-		feats.addAll(feat.keySet());
+		feats.addAll(summarizingFeat.keySet());
 
+		// Use first 3 lemmas from doc content
 		docFeatures.setSubject(StringUtils.join(
-				feats.subList(0, Math.min(3, feat.size())), ","));
+				feats.subList(0, Math.min(3, summarizingFeat.size())), ","));
 
 		docFeatures.setPublisher("BBC");
 		docFeatures.setCreator("Lorenzo Biava");

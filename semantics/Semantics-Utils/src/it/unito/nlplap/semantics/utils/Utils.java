@@ -33,6 +33,12 @@ public class Utils {
 		}
 	}
 
+	/**
+	 * Return a sorted map using the value of its items.
+	 * @param unsortMap
+	 * @param reverse to sort in reverse order.
+	 * @return
+	 */
 	public static <A extends Comparable<A>> Map<String, A> sortByComparator(
 			Map<String, A> unsortMap, boolean reverse) {
 

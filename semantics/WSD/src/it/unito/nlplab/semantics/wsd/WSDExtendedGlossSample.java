@@ -1,29 +1,14 @@
 package it.unito.nlplab.semantics.wsd;
 
-import it.uniroma1.lcl.babelnet.BabelNet;
-import it.uniroma1.lcl.babelnet.BabelSynset;
-import it.uniroma1.lcl.babelnet.BabelSynsetIDRelation;
-import it.uniroma1.lcl.babelnet.data.BabelCategory;
-import it.uniroma1.lcl.babelnet.data.BabelExample;
-import it.uniroma1.lcl.babelnet.data.BabelGloss;
-import it.uniroma1.lcl.babelnet.data.BabelPOS;
-import it.uniroma1.lcl.jlt.util.Language;
 import it.unito.nlplab.semantics.textcleaner.LemmatizingTextCleaner;
 import it.unito.nlplab.semantics.textcleaner.TextCleaner;
-import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import rita.RiTa;
-import edu.stanford.nlp.util.StringUtils;
 
 public class WSDExtendedGlossSample {
 
@@ -56,238 +41,18 @@ public class WSDExtendedGlossSample {
 		// TextCleaner cleaner = new StemmingTextCleaner(language);
 		TextCleaner cleaner = new LemmatizingTextCleaner(language);
 
-		String pos = RiTa.getPosTags(word, true)[0];
+		int relatedSensesLimit = 3;
 
-		String cleanWord = cleaner.cleanText(word);
-
-		int relatedSensesLimit = 10;
-
-		List<ExtendedSense> senses = getExtendedSenses(cleanWord, pos,
-				relatedSensesLimit);
-
-		// Print sense for debug
-		LOG.info(String.format("Found %d senses:", senses.size()));
-		int senseCount = 0;
-		for (ExtendedSense sense : senses) {
-			LOG.info(String.format("\tSense %d:", ++senseCount));
-			LOG.info(sense.pprint(1));
-		}
+		ExtendedWSD ewsd = new ExtendedWSD(language, cleaner);
 
 		for (String context : contexts) {
 
 			// Process input
 			LOG.info(String
-					.format("\n\nBest sense for word '%s' (was '%s') in context '%s':\n\t%s\n\n",
-							cleanWord,
-							word,
-							context,
-							getBestSenseWithExtendedLeskAlgorithm(cleanWord,
-									context, senses, language, cleaner)));
+					.format("\n\nBest sense for word '%s' in context '%s':\n\t%s\n\n",
+							word, context, ewsd.getBestSense(
+									word, context, relatedSensesLimit)));
 		}
-	}
-
-	/**
-	 * 
-	 * @param searchWord
-	 * @param context
-	 * @param senses
-	 * @param language
-	 * @param cleaner
-	 * @return
-	 * @throws Exception
-	 */
-	private static ExtendedSense getBestSenseWithExtendedLeskAlgorithm(
-			String searchWord, String context, List<ExtendedSense> senses,
-			Locale language, TextCleaner cleaner) throws Exception {
-
-		int maxOverlap = 0;
-		ExtendedSense bestSense = null;
-		String cleanContext = cleaner.cleanText(context);
-		for (ExtendedSense sense : senses) {
-			int overlap = getOverlap(sense,
-					FeatureVectorUtils.getLemmas(cleanContext, language),
-					language, cleaner);
-
-			LOG.info(String
-					.format("[getBestSenseWithExtendedLeskAlgorithm] - word=%s, overlap=%d, context=%s, sense=%s",
-							searchWord, overlap, cleanContext, sense));
-
-			if (overlap > maxOverlap) {
-				maxOverlap = overlap;
-				bestSense = sense;
-			}
-		}
-
-		return bestSense;
-	}
-
-	private static int getOverlap(ExtendedSense sense,
-			List<String> contextLemmas, Locale language, TextCleaner cleaner)
-			throws Exception {
-		int overlap = 0;
-
-		Map<String, String> senseWords = new HashMap<String, String>();
-
-		for (String gloss : sense.getGlosses()) {
-			// senseWords.clear();
-			for (String senseWord : FeatureVectorUtils.getLemmas(
-					cleaner.cleanText(gloss), language)) {
-				senseWords.put(senseWord, null);
-			}
-			// overlap += getOverlap(contextLemmas, senseWords);
-		}
-
-		// senseWords.clear();
-		for (String example : sense.getExamples()) {
-			for (String exampleWord : FeatureVectorUtils.getLemmas(
-					cleaner.cleanText(example), language)) {
-				senseWords.put(exampleWord, null);
-			}
-		}
-		// overlap += getOverlap(contextLemmas, senseWords);
-
-		for (Sense rs : sense.getRelatedSenses()) {
-			for (String example : rs.getExamples()) {
-				// senseWords.clear();
-				for (String exampleWord : FeatureVectorUtils.getLemmas(
-						cleaner.cleanText(example), language)) {
-					senseWords.put(exampleWord, null);
-				}
-				// overlap += getOverlap(contextLemmas, senseWords);
-			}
-		}
-
-		overlap = getOverlap(contextLemmas, senseWords);
-		LOG.info(String.format(
-				"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
-				overlap, StringUtils.join(contextLemmas, ", "),
-				StringUtils.join(senseWords.keySet(), ", ")));
-
-		return overlap;
-	}
-
-	private static int getOverlap(List<String> context,
-			Map<String, String> senseWords) {
-		int overlap = 0;
-
-		for (String contextWord : context) {
-			if (senseWords.containsKey(contextWord))
-				overlap++;
-		}
-
-		return overlap;
-	}
-
-	private static List<ExtendedSense> getExtendedSenses(String searchWord,
-			String pos) {
-		return getExtendedSenses(searchWord, pos, 0);
-	}
-
-	private static List<ExtendedSense> getExtendedSenses(String searchWord,
-			String pos, int limit) {
-
-		LOG.info(String
-				.format("Getting senses for word '%s', with PoS '%s', related senses limit %d",
-						searchWord, pos, limit));
-
-		List<ExtendedSense> senses = new ArrayList<ExtendedSense>();
-
-		BabelNet bn = BabelNet.getInstance();
-		BabelPOS bpos = BabelPOS.NOUN;
-		switch (pos) {
-		case "n":
-			bpos = BabelPOS.NOUN;
-			break;
-		case "v":
-			bpos = BabelPOS.VERB;
-			break;
-		case "a":
-			bpos = BabelPOS.ADJECTIVE;
-			break;
-		case "r":
-			bpos = BabelPOS.ADVERB;
-			break;
-		default:
-		}
-
-		List<BabelSynset> bySynsets = bn.getSynsets(Language.IT, searchWord,
-				bpos);
-		int senseCount = 0;
-
-		for (BabelSynset bsynset : bySynsets) {
-
-			LOG.debug(String.format("Retrieving sense # %d/%d", ++senseCount,
-					bySynsets.size()));
-
-			ExtendedSense sense = new ExtendedSense();
-			sense.setId(bsynset.getId().getID());
-			sense.setName(bsynset.getMainSense());
-			sense.setGlosses(extractGlossesFromBabelSynset(bsynset));
-
-			sense.setExamples(extractExamplesFromBabelSynset(bsynset));
-
-			sense.getExamples().add(
-					"_: "
-							+ StringUtils.join(
-									extractCategoriesFromBabelSynset(bsynset),
-									", "));
-
-			// Get related senses (only directly connected, with limit)
-			int relatedSensesLimit = (limit == 0 ? 999 : limit);
-
-			List<Sense> rss = new ArrayList<Sense>();
-			List<BabelSynsetIDRelation> relatedSenses = bsynset.getEdges();
-			int relatedSenseCount = 0;
-			for (BabelSynsetIDRelation brel : relatedSenses) {
-
-				if (--relatedSensesLimit < 0)
-					break;
-
-				LOG.debug(String.format(
-						"Retrieving related sense # %d/%d of sense %s",
-						++relatedSenseCount, relatedSenses.size(),
-						sense.getId()));
-
-				Sense rs = new Sense();
-				BabelSynset relatedSynset = brel.getBabelSynsetIDTarget()
-						.toBabelSynset();
-
-				rs.setId(relatedSynset.getId().getID());
-				rs.setName(relatedSynset.getMainSense());
-				rs.setGlosses(extractGlossesFromBabelSynset(relatedSynset));
-				rs.setExamples(extractExamplesFromBabelSynset(relatedSynset));
-
-				if (!(rs.getGlosses().isEmpty() && rs.getExamples().isEmpty()))
-					rss.add(rs);
-			}
-			sense.setRelatedSenses(rss);
-
-			senses.add(sense);
-		}
-		return senses;
-	}
-
-	private static List<String> extractCategoriesFromBabelSynset(
-			BabelSynset synset) {
-		List<String> examples = new ArrayList<String>();
-		for (BabelCategory bexample : synset.getCategories(Language.IT))
-			examples.add(bexample.getCategory());
-		return examples;
-	}
-
-	private static List<String> extractExamplesFromBabelSynset(
-			BabelSynset synset) {
-		List<String> examples = new ArrayList<String>();
-		for (BabelExample bexample : synset.getExamples(Language.IT))
-			examples.add(bexample.getExample());
-		return examples;
-	}
-
-	private static List<String> extractGlossesFromBabelSynset(BabelSynset synset) {
-		List<String> examples = new ArrayList<String>();
-		for (BabelGloss bgloss : synset.getGlosses(Language.IT))
-			examples.add(bgloss.getGloss());
-		return examples;
 	}
 
 }

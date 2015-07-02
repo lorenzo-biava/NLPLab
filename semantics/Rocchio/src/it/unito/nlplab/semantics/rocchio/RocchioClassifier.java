@@ -1,5 +1,6 @@
 package it.unito.nlplab.semantics.rocchio;
 
+import it.unito.nlplab.semantics.rocchio.utils.ClassificationResult;
 import it.unito.nlplab.semantics.rocchio.utils.Document;
 import it.unito.nlplap.semantics.utils.MutableDouble;
 import it.unito.nlplap.semantics.utils.MutableInt;
@@ -12,6 +13,10 @@ import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+/**
+ * A Rocchio document classifier implementation.
+ *
+ */
 public class RocchioClassifier {
 
 	private static final Logger LOG = LogManager
@@ -23,6 +28,7 @@ public class RocchioClassifier {
 	Map<String, Map<String, MutableDouble>> rocchioClasses;
 
 	/**
+	 * Initialize the Rocchio document classifier, with the input training set.
 	 * 
 	 * @param trainingDocuments
 	 *            documents for training. It is required that they contain a
@@ -66,8 +72,9 @@ public class RocchioClassifier {
 					.size(), it.unito.nlplap.semantics.utils.Utils
 					.sortByComparator(idf, true)));
 
+		// PRUNING !
 		// Extract collection terms (feature vector)
-		// Only relevant terms (i.e. idf > 0)
+		// Only relevant terms (i.e. idf > pruningThreshold)
 		for (Map.Entry<String, MutableDouble> term : idf.entrySet()) {
 			if (term.getValue().getValue() >= pruningThreshold)
 				terms.put(term.getKey(), new MutableInt(0));
@@ -113,6 +120,12 @@ public class RocchioClassifier {
 		LOG.info("Training complete");
 	}
 
+	/**
+	 * Compute document features, based on the current classifier training data.
+	 * 
+	 * @param doc
+	 * @return
+	 */
 	public Document computeDocumentFeatures(Document doc) {
 		return computeDocumentFeatures(doc, idf);
 	}
@@ -129,8 +142,9 @@ public class RocchioClassifier {
 		for (Map.Entry<String, MutableInt> term : terms.entrySet()) {
 			double value = 0;
 			if (doc.getTerms().size() > 0)
-				value = ((double) doc.getCollectionTermCount().get(term.getKey())
-						.getValue()) / doc.getTerms().size();
+				value = ((double) doc.getCollectionTermCount()
+						.get(term.getKey()).getValue())
+						/ doc.getTerms().size();
 			doc.getCollectionTermFrequency().put(term.getKey(),
 					new MutableDouble(value));
 		}
@@ -138,6 +152,7 @@ public class RocchioClassifier {
 		doc.setCollectionTermWeight(it.unito.nlplap.semantics.utils.Utils
 				.clone(doc.getCollectionTermFrequency()));
 
+		// Doc features debug infos
 		if (LOG.isDebugEnabled()) {
 			LOG.debug(String.format(
 					"Document '%s' termCount=[%s]",
@@ -152,6 +167,7 @@ public class RocchioClassifier {
 									true), 256)));
 		}
 
+		// Compute TF-IDF if IDF is available
 		if (idf != null) {
 			for (Map.Entry<String, MutableDouble> term : doc
 					.getCollectionTermWeight().entrySet())
@@ -171,16 +187,31 @@ public class RocchioClassifier {
 		return doc;
 	}
 
+	/**
+	 * Returns the feature vector for the current classifier training data.
+	 * 
+	 * @return
+	 */
 	public Map<String, MutableInt> getFeatureVector() {
 		return featureVector;
 	}
 
+	/**
+	 * Classifies a given {@link Document}, returning the
+	 * {@link ClassificationResult}.
+	 * 
+	 * @param document
+	 *            a document to classify; MUST be already computed, see
+	 *            {@link RocchioClassifier#computeDocumentFeatures(Document)} .
+	 * @return
+	 */
 	public ClassificationResult classify(Document document) {
-		// Test each Rocchio class
+		// Score each Rocchio class and choose the max score
 		double bestScore = 0;
 		String bestClass = null;
 		for (Map.Entry<String, Map<String, MutableDouble>> clazz : rocchioClasses
 				.entrySet()) {
+			// Score = Cosine Similarity
 			double score = RocchioClassifier.cosineSimilarity(
 					document.getCollectionTermWeight(), clazz.getValue());
 			if (score > bestScore) {
@@ -192,6 +223,12 @@ public class RocchioClassifier {
 		return new ClassificationResult(bestClass, bestScore);
 	}
 
+	/**
+	 * Returns the Cosine Similarity score for a pair of feature vectors.
+	 * @param wd in the form of a Map of Feature,Value
+	 * @param wq
+	 * @return
+	 */
 	public static double cosineSimilarity(Map<String, MutableDouble> wd,
 			Map<String, MutableDouble> wq) {
 		if (wd.size() != wq.size())
@@ -218,6 +255,12 @@ public class RocchioClassifier {
 		return sum / (wd2 * wq2);
 	}
 
+	/**
+	 * Computes Rocchio classification classes based on given documents and their features
+	 * @param documents
+	 * @param featuresInt
+	 * @return
+	 */
 	public static Map<String, Map<String, MutableDouble>> extractRocchioClasses(
 			List<Document> documents, Map<String, MutableInt> featuresInt) {
 		Map<String, Map<String, MutableDouble>> classes = new HashMap<String, Map<String, MutableDouble>>();
@@ -298,6 +341,12 @@ public class RocchioClassifier {
 		return classes;
 	}
 
+	/**
+	 * Utility method, to trim long log lines.
+	 * @param obj
+	 * @param maxSize
+	 * @return
+	 */
 	public static String trimLog(Object obj, int maxSize) {
 		String text = obj.toString();
 		return text.length() > maxSize ? text.substring(0, maxSize) + "..."

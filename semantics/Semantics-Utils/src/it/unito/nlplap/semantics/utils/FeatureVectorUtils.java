@@ -103,13 +103,6 @@ public class FeatureVectorUtils {
 		List<String> lemmas = new ArrayList<String>();
 
 		if (language == Locale.ITALIAN) {
-			// SnowballStemmer stemmer = (SnowballStemmer) new italianStemmer();
-			//
-			// for (String string : words) {
-			// stemmer.setCurrent(string);
-			// stemmer.stem();
-			// lemmas.add(stemmer.getCurrent());
-			// }
 			if (morphitLemmatizer == null)
 				morphitLemmatizer = new MorphItLemmatizer();
 
@@ -120,44 +113,35 @@ public class FeatureVectorUtils {
 			}
 
 		} else {
-			// creates a StanfordCoreNLP object, with POS tagging,
-			// lemmatization,
-			// NER, parsing, and coreference resolution
+			// Init Stanford Pipeline if needed
 			Properties props = new Properties();
 			props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
 			if (pipeline == null)
 				pipeline = new StanfordCoreNLP(props);
 
-			// read some text in the text variable
-			// TODO: Make a choice ?
-			text = StringUtils.join(words, " ");//.toLowerCase();
+			text = StringUtils.join(words, " ");
 
-			// create an empty Annotation just with the given text
+			// Run the pipeline on the text 
 			Annotation document = new Annotation(text);
-
-			// run all Annotators on this text
+			
 			pipeline.annotate(document);
 
-			// these are all the sentences in this document
-			// a CoreMap is essentially a Map that uses class objects as keys
-			// and
-			// has values with custom types
+			
 			List<CoreMap> sentences = document.get(SentencesAnnotation.class);
 
+			// For each Sentence
 			for (CoreMap sentence : sentences) {
-				// traversing the words in the current sentence
-				// a CoreLabel is a CoreMap with additional token-specific
-				// methods
+				
+				// For each Word
 				for (CoreLabel token : sentence.get(TokensAnnotation.class)) {
-					// // this is the text of the token
-					String word = token.get(TextAnnotation.class);
-					// // this is the POS tag of the token
+					
+					String word = token.get(TextAnnotation.class);					
 					String pos = token.get(PartOfSpeechAnnotation.class);
+					
 					// Skip unwanted PoS
 					if (acceptedPoS != null && !goodPoS.containsKey(pos))
 						continue;
 										
-					// // this is the NER label of the token
 					String lemma = token.get(LemmaAnnotation.class);
 					
 					if (preserveProperNounCase && isProperNoun(word, pos, "Stanford"))						
@@ -171,31 +155,6 @@ public class FeatureVectorUtils {
 
 		lemmas = swt.trim(lemmas);
 		return lemmas;
-	}
-
-	protected static boolean isProperNoun(String word, String pos, String posType) {
-		if (posType.equals("Stanford")) {
-			boolean is=false;
-			is |= pos.equals("NNP");
-			is |= pos.equals("NNPS");
-			//is |= pos.equals("NN") && Character.isUpperCase(word.charAt(0));
-			//is |= pos.equals("NNS") && Character.isUpperCase(word.charAt(0));
-			return is;
-		}
-
-		throw new IllegalArgumentException(String.format(
-				"Undefined pos type %s", posType));
-	}
-
-	protected static void addToLemmaCount(Map<String, Integer> lemmaCount,
-			String lemma) {
-		if (lemmaCount == null)
-			return;
-
-		if (lemmaCount.containsKey(lemma))
-			lemmaCount.put(lemma, lemmaCount.get(lemma) + 1);
-		else
-			lemmaCount.put(lemma, 1);
 	}
 
 	/**
@@ -220,5 +179,32 @@ public class FeatureVectorUtils {
 	 */
 	public static List<String> getLemmas(String text) throws Exception {
 		return getLemmas(text, Locale.ENGLISH);
+	}
+	
+	/* Utilities */
+
+	protected static boolean isProperNoun(String word, String pos, String posType) {
+		if (posType.equals("Stanford")) {
+			boolean is=false;
+			is |= pos.equals("NNP");
+			is |= pos.equals("NNPS");
+			//is |= pos.equals("NN") && Character.isUpperCase(word.charAt(0));
+			//is |= pos.equals("NNS") && Character.isUpperCase(word.charAt(0));
+			return is;
+		}
+
+		throw new IllegalArgumentException(String.format(
+				"Undefined pos type %s", posType));
+	}
+
+	protected static void addToLemmaCount(Map<String, Integer> lemmaCount,
+			String lemma) {
+		if (lemmaCount == null)
+			return;
+
+		if (lemmaCount.containsKey(lemma))
+			lemmaCount.put(lemma, lemmaCount.get(lemma) + 1);
+		else
+			lemmaCount.put(lemma, 1);
 	}
 }

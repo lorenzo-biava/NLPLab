@@ -1,5 +1,8 @@
 package it.unito.nlplap.semantics.utils.lemmatizer;
 
+/**
+ * Class to hold MorphIt data for each word.
+ */
 public class MorphItData {
 	private String lemma, word, pos, extra;
 

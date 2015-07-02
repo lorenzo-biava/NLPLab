@@ -5,6 +5,10 @@ import java.util.List;
 
 import edu.stanford.nlp.util.StringUtils;
 
+/**
+ * An extension of {@link Sense} that can be related to other senses.
+ *
+ */
 public class ExtendedSense extends Sense {
 	private List<Sense> relatedSenses = new ArrayList<Sense>();
 
@@ -16,6 +20,8 @@ public class ExtendedSense extends Sense {
 		this.relatedSenses = relatedSenses;
 	}
 
+	/* Utilities */
+	
 	@Override
 	public String toString() {
 		return String
@@ -29,14 +35,13 @@ public class ExtendedSense extends Sense {
 		StringBuilder pp = new StringBuilder();
 		pp.append(super.pprint(startTabs));
 
-		pp.append(String.format(getTabs(startTabs+1)+"Related Senses: %d", getRelatedSenses()
-				.size()));
+		pp.append(String.format(getTabs(startTabs + 1) + "Related Senses: %d",
+				getRelatedSenses().size()));
 		for (Sense relatedSense : getRelatedSenses()) {
-			pp.append(relatedSense.pprint(startTabs+2));
+			pp.append(relatedSense.pprint(startTabs + 2));
 		}
-		
+
 		return pp.toString();
 	}
 
-	
 }

@@ -1,5 +1,10 @@
-package it.unito.nlplab.semantics.rocchio;
+package it.unito.nlplab.semantics.rocchio.utils;
 
+/**
+ * A class to conveniently store a classification result (in terms of best class
+ * name and related score).
+ *
+ */
 public class ClassificationResult {
 	private String bestClass;
 	private double bestScore;

@@ -18,20 +18,19 @@ import com.hp.hpl.jena.vocabulary.DC;
 public class SPARQLQuerySample {
 
 	public static void main(String[] args) throws FileNotFoundException {
-		start();
-	}
-
-	public static void start() throws FileNotFoundException {
 		Model model = ModelFactory.createDefaultModel();
 
 		// read the RDF/XML file
 		model.read(new FileInputStream(new File(RDFPopulatorSample.RDF_FILE)), null);
 
 		String author = "Anakin Skywalker";
+		// Query 1
 		searchByAuthor(model, author);
 
+		// Query 2
 		searchByTitle(model, "Unavailable Title");
 
+		// Query 3
 		searchByTitle(model, "Avatar breaks US DVD sales record");
 	}
 

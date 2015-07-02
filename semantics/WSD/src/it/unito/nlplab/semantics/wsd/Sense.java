@@ -6,6 +6,11 @@ import java.util.List;
 
 import edu.stanford.nlp.util.StringUtils;
 
+/**
+ * Class representing a word's sense, along with its glosses, examples and
+ * computed context terms.
+ *
+ */
 public class Sense {
 	private String name;
 	private String id;
@@ -17,7 +22,7 @@ public class Sense {
 	public String getName() {
 		return name;
 	}
- 
+
 	public void setName(String name) {
 		this.name = name;
 	}
@@ -65,9 +70,11 @@ public class Sense {
 	public void setExamples(List<String> examples) {
 		this.examples = examples;
 	}
-	
+
 	/**
-	 * Get context words already cleaned (i.e. tokenized, stopwords removed, lemmatized)
+	 * Get context words already cleaned (i.e. tokenized, stopwords removed,
+	 * lemmatized)
+	 * 
 	 * @return
 	 */
 	public HashSet<String> getContext() {
@@ -78,13 +85,15 @@ public class Sense {
 		this.context = context;
 	}
 
+	/* Utilities */
+	
 	@Override
 	public String toString() {
-		return String.format("Sense[id=%s, name=%s, glosses=%s, examples=%s]",id, name,
-				StringUtils.join(glosses, ", "),
+		return String.format("Sense[id=%s, name=%s, glosses=%s, examples=%s]",
+				id, name, StringUtils.join(glosses, ", "),
 				StringUtils.join(examples, ", "));
 	}
-	
+
 	public String pprint(int startTabs) {
 		StringBuilder pp = new StringBuilder();
 		pp.append(String.format(getTabs(startTabs + 1) + "Id: %s", getId()));
@@ -97,7 +106,7 @@ public class Sense {
 				getExamples().size()));
 		for (String example : getExamples())
 			pp.append(String.format(getTabs(startTabs + 2) + "%s", example));
-		
+
 		return pp.toString();
 	}
 	

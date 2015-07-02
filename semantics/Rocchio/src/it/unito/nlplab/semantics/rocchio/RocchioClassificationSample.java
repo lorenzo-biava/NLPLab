@@ -1,5 +1,6 @@
 package it.unito.nlplab.semantics.rocchio;
 
+import it.unito.nlplab.semantics.rocchio.utils.ClassificationResult;
 import it.unito.nlplab.semantics.rocchio.utils.Document;
 
 import java.io.File;

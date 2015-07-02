@@ -1,6 +1,8 @@
 package it.unito.nlplab.semantics.rocchio;
 
+import it.unito.nlplab.semantics.rocchio.utils.ClassificationResult;
 import it.unito.nlplab.semantics.rocchio.utils.Document;
+import it.unito.nlplab.semantics.rocchio.utils.Parallel;
 import it.unito.nlplab.semantics.wsd.Sense;
 import it.unito.nlplab.semantics.wsd.WSD;
 import it.unito.nlplab.semantics.wsd.WSD.StopWordException;
@@ -43,7 +45,7 @@ public class RocchioClassificationBenchmark {
 	public static void main(String[] args) throws Exception {
 
 		boolean ita = false;
-		boolean useWSD = false;
+		boolean useWSD = true;
 		boolean randomSplit = false;
 
 		String docDirPath;
@@ -136,8 +138,6 @@ public class RocchioClassificationBenchmark {
 					new Parallel.Operation<Document>() {
 						public void perform(Document doc, int index, int total) {
 							try {
-								if(doc.getName().equals("0003009"))
-									doc=doc;
 								long startTime = System.currentTimeMillis();
 
 								HashSet<String> terms = new HashSet<String>();

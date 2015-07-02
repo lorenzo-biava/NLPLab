@@ -6,11 +6,9 @@ import it.unito.nlplab.semantics.textcleaner.TextCleaner;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -71,7 +69,7 @@ public class WSD {
 	private TextCleaner cleaner;
 
 	/**
-	 * Holds already discovered sense with cleaned contexts (i.e. lemmatized or
+	 * Holds already discovered senses with cleaned contexts (i.e. lemmatized or
 	 * something) for Word-PoS
 	 */
 	private ConcurrentMap<String, ConcurrentMap<String, List<Sense>>> senseCache = new ConcurrentHashMap<String, ConcurrentMap<String, List<Sense>>>();
@@ -79,9 +77,12 @@ public class WSD {
 	/**
 	 * 
 	 * @param language
+	 * @param cleaner
+	 *            if null, defaulting to {@link LemmatizingTextCleaner}
 	 * @throws FileNotFoundException
 	 */
-	public WSD(Locale language) throws FileNotFoundException {
+	public WSD(Locale language, TextCleaner cleaner)
+			throws FileNotFoundException {
 		if (language != Locale.ENGLISH)
 			throw new IllegalArgumentException(
 					"Currently only English is supported.");
@@ -92,11 +93,16 @@ public class WSD {
 		this.wn = new RiWordNet(wordNetDir);
 
 		// this.language = language;
-		// TextCleaner cleaner = new DummyTextCleaner();
-		// TextCleaner cleaner = new StopWordOnlyTextCleaner(language);
-		// cleaner = new StemmingTextCleaner(language);
-		cleaner = new LemmatizingTextCleaner(language);
 
+		if (cleaner == null) {
+			cleaner = new LemmatizingTextCleaner(language);
+		}
+		this.cleaner=cleaner;
+
+	}
+	
+	public WSD(Locale language) throws FileNotFoundException {
+		this(language, null);
 	}
 
 	public Sense getBestSense(String word, String context) throws Exception {
@@ -131,7 +137,7 @@ public class WSD {
 
 		return getBestSense(cleanWord, cleanContext, pos);
 	}
-	
+
 	/**
 	 * Returns the best sense for the given word and context (sentence in which
 	 * the word is in) or null. Both word and context MUST be already cleaned
@@ -145,7 +151,7 @@ public class WSD {
 	 */
 	public Sense getBestSense(String cleanWord, HashSet<String> cleanContext,
 			String pos) throws Exception {
-		
+
 		// Get word's best PoS tag
 		if (pos == null) {
 			pos = "n";
@@ -280,7 +286,7 @@ public class WSD {
 	 * @return
 	 * @throws Exception
 	 */
-	private int getOverlap(Sense sense, HashSet<String> context)
+	public static int getOverlap(Sense sense, HashSet<String> context)
 			throws Exception {
 		int overlap = 0;
 
