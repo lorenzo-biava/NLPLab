@@ -30,6 +30,38 @@ import rita.RiWordNet;
  */
 public class WSD {
 
+	/**
+	 * Exception to signal a that a given word to WSD has been skipped by the
+	 * stop words filter.
+	 *
+	 */
+	public static class StopWordException extends RuntimeException {
+
+		private static final long serialVersionUID = 1L;
+
+		public StopWordException() {
+			super();
+		}
+
+		public StopWordException(String message, Throwable cause,
+				boolean enableSuppression, boolean writableStackTrace) {
+			super(message, cause, enableSuppression, writableStackTrace);
+		}
+
+		public StopWordException(String message, Throwable cause) {
+			super(message, cause);
+		}
+
+		public StopWordException(String message) {
+			super(message);
+		}
+
+		public StopWordException(Throwable cause) {
+			super(cause);
+		}
+
+	}
+
 	private static final Logger LOG = LogManager.getLogger(WSD.class);
 
 	public static final String WORDNET_DEFAULT_DIR = "/usr/local/WordNet-3.0";
@@ -71,36 +103,6 @@ public class WSD {
 		return getBestSense(word, context, null);
 	}
 
-	public static class StopWordException extends RuntimeException {
-
-		public StopWordException() {
-			super();
-			// TODO Auto-generated constructor stub
-		}
-
-		public StopWordException(String message, Throwable cause,
-				boolean enableSuppression, boolean writableStackTrace) {
-			super(message, cause, enableSuppression, writableStackTrace);
-			// TODO Auto-generated constructor stub
-		}
-
-		public StopWordException(String message, Throwable cause) {
-			super(message, cause);
-			// TODO Auto-generated constructor stub
-		}
-
-		public StopWordException(String message) {
-			super(message);
-			// TODO Auto-generated constructor stub
-		}
-
-		public StopWordException(Throwable cause) {
-			super(cause);
-			// TODO Auto-generated constructor stub
-		}
-
-	}
-
 	/**
 	 * Returns the best sense for the given word and context (sentence in which
 	 * the word is in) or null. Both word and context will be cleaned
@@ -127,6 +129,23 @@ public class WSD {
 			cleanContext.add(contextWord);
 		}
 
+		return getBestSense(cleanWord, cleanContext, pos);
+	}
+	
+	/**
+	 * Returns the best sense for the given word and context (sentence in which
+	 * the word is in) or null. Both word and context MUST be already cleaned
+	 * appropriately (i.e. tokenized, stopwords filtered and lemmatized).
+	 * 
+	 * @param cleanWord
+	 * @param cleanContext
+	 * @param pos
+	 * @return
+	 * @throws Exception
+	 */
+	public Sense getBestSense(String cleanWord, HashSet<String> cleanContext,
+			String pos) throws Exception {
+		
 		// Get word's best PoS tag
 		if (pos == null) {
 			pos = "n";
@@ -141,7 +160,7 @@ public class WSD {
 		if (LOG.isDebugEnabled())
 			LOG.debug(String
 					.format("Calculating best sense for word '%s' (originally '%s'), PoS '%s' and context '%s'",
-							cleanWord, word, pos, context));
+							cleanWord, pos, cleanContext));
 
 		// Compute best sense
 		Sense s = getBestSenseWithLeskAlgorithm(cleanWord, cleanContext, pos);
@@ -220,7 +239,7 @@ public class WSD {
 			wordCache = new ConcurrentHashMap<String, List<Sense>>();
 			senses = new ArrayList<Sense>();
 			wordCache.put(pos, senses);
-			senseCache.put(word, wordCache);			
+			senseCache.put(word, wordCache);
 		}
 
 		// Retrieve senses

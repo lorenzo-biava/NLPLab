@@ -5,10 +5,12 @@ import it.unito.nlplab.semantics.wsd.Sense;
 import it.unito.nlplab.semantics.wsd.WSD;
 import it.unito.nlplab.semantics.wsd.WSD.StopWordException;
 import it.unito.nlplap.semantics.utils.FeatureVectorUtils;
+import it.unito.nlplap.semantics.utils.StopWordsTrimmer;
 import it.unito.nlplap.semantics.utils.Utils;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -20,8 +22,8 @@ import java.util.Random;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import edu.stanford.nlp.ling.CoreAnnotations.LemmaAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.SentencesAnnotation;
-import edu.stanford.nlp.ling.CoreAnnotations.TextAnnotation;
 import edu.stanford.nlp.ling.CoreAnnotations.TokensAnnotation;
 import edu.stanford.nlp.ling.CoreLabel;
 import edu.stanford.nlp.pipeline.Annotation;
@@ -41,7 +43,8 @@ public class RocchioClassificationBenchmark {
 	public static void main(String[] args) throws Exception {
 
 		boolean ita = false;
-		boolean useWSD = true;
+		boolean useWSD = false;
+		boolean randomSplit = false;
 
 		String docDirPath;
 		Locale docLang;
@@ -57,6 +60,7 @@ public class RocchioClassificationBenchmark {
 			docLang = DOCUMENTS_LANGUAGE_EN;
 		}
 
+		// Load docs (and extract features)
 		docDir = new File(docDirPath);
 		dataSet = loadDocsInSubdirs(docDir);
 		loadDocsTerms(dataSet, docLang, useWSD);
@@ -66,13 +70,15 @@ public class RocchioClassificationBenchmark {
 		List<Document> testSet = new ArrayList<Document>();
 		List<Document> trainingSet = new ArrayList<Document>();
 
+		// Split datasets
 		Map<String, List<Document>> datasetInClasses = datasetSplitInClasses(dataSet);
 		for (Map.Entry<String, List<Document>> dsClass : datasetInClasses
 				.entrySet()) {
-			datasetSplit(dsClass.getValue(), testsetRatio, trainingSet, testSet);
+			datasetSplit(dsClass.getValue(), testsetRatio, trainingSet,
+					testSet, randomSplit);
 		}
 
-		RocchioClassifier rc = new RocchioClassifier(trainingSet, 4);
+		RocchioClassifier rc = new RocchioClassifier(trainingSet, 0);
 
 		// Classify docs
 		int correctCount = 0;
@@ -96,13 +102,13 @@ public class RocchioClassificationBenchmark {
 				testSet.size(), correctCount, wrongCount));
 	}
 
-	private static StanfordCoreNLP pipeline;
-
 	/**
 	 * Computes the text in the document dataset, extracting terms/features.
+	 * 
 	 * @param docs
 	 * @param language
-	 * @param useWSD if true terms are WSD, lemmas are used otherwise.
+	 * @param useWSD
+	 *            if true terms are WSD, lemmas are used otherwise.
 	 * @throws Exception
 	 */
 	public static void loadDocsTerms(List<Document> docs, Locale language,
@@ -110,36 +116,35 @@ public class RocchioClassificationBenchmark {
 
 		HashSet<String> terms;
 		if (useWSD) {
+			// Use Sense from WSD as features
+
 			if (language != Locale.ENGLISH)
 				throw new IllegalArgumentException(
 						"WSD terms generation is currently supported only for English language");
 
 			final WSD wsd = new WSD(language);
+			final StopWordsTrimmer swt = new StopWordsTrimmer(language);
 
-			// Get sentences
+			// Init Stanford Core NLP
 			Properties props = new Properties();
-			// props.setProperty("annotators",
-			// "tokenize, ssplit, pos, lemma");
-			props.setProperty("annotators", "tokenize, ssplit");
-			if (pipeline == null)
-				pipeline = new StanfordCoreNLP(props);
+			props.setProperty("annotators", "tokenize, ssplit, pos, lemma");
+			final StanfordCoreNLP pipeline = new StanfordCoreNLP(props);
+			;
 
 			Parallel.For(docs,
-			// The operation to perform with each item
+			// Extract features from Documents in parallel
 					new Parallel.Operation<Document>() {
 						public void perform(Document doc, int index, int total) {
 							try {
+								if(doc.getName().equals("0003009"))
+									doc=doc;
 								long startTime = System.currentTimeMillis();
 
 								HashSet<String> terms = new HashSet<String>();
 
-								// create an empty Annotation just with the
-								// given
-								// text
+								// Run Stanford pipeline
 								Annotation document = new Annotation(doc
 										.getText());
-
-								// run all Annotators on this text
 								pipeline.annotate(document);
 
 								List<CoreMap> sentences = document
@@ -147,23 +152,58 @@ public class RocchioClassificationBenchmark {
 
 								// For each Sentence
 								for (CoreMap sentence : sentences) {
+
+									HashSet<String> context = new HashSet<String>();
 									for (CoreLabel token : sentence
 											.get(TokensAnnotation.class)) {
 
-										String word = token
-												.get(TextAnnotation.class);
-										// // this is the POS tag of the token
-										// String pos =
-										// token.get(PartOfSpeechAnnotation.class);
+										String lemma = token
+												.get(LemmaAnnotation.class);
+										if (lemma.length() > 0)
+											context.add(swt.normalizeWord(lemma
+													.toLowerCase()));
+									}
+
+									// Context, StopWords filter
+									context = new HashSet<String>(swt
+											.trim(context));
+
+									for (CoreLabel token : sentence
+											.get(TokensAnnotation.class)) {
+
 										try {
-											Sense s = wsd.getBestSense(word,
-													sentence.toString());
+
+											String lemma = token
+													.get(LemmaAnnotation.class);
+											// token
+											// String pos =
+											// token.get(PartOfSpeechAnnotation.class);
+
+											// Word, StopWords filter
+											List<String> tmp = swt.trim(Arrays.asList(new String[] { swt
+													.normalizeWord(lemma
+															.toLowerCase()) }));
+
+											// Check empty word (stop words
+											// filtered)
+											if (tmp.size() < 1)
+												continue;
+											String cleanWord = tmp.iterator()
+													.next();
+
+											if (cleanWord.length() < 1)
+												continue;
+
+											// Get senses with WSD
+											Sense s = wsd.getBestSense(
+													cleanWord, context, null);
 
 											if (s != null)
 												terms.add("<" + s.getId() + ":"
 														+ s.getLemma() + ">");
 											else
-												terms.add("<NA:" + word + ">");
+												terms.add("<NA:" + cleanWord
+														+ ">");
 										} catch (StopWordException e) {
 											// Skip this word as a stop word
 										}
@@ -185,6 +225,7 @@ public class RocchioClassificationBenchmark {
 						};
 					});
 		} else {
+			// Use lemmas as features
 			int i = 0;
 			for (Document doc : docs) {
 				terms = new HashSet<String>(FeatureVectorUtils.getLemmas(
@@ -198,8 +239,19 @@ public class RocchioClassificationBenchmark {
 		}
 	}
 
+	/**
+	 * Splits the dataset in training and test, with the given ratio.
+	 * 
+	 * @param dataSet
+	 * @param testsetRatio
+	 * @param trainingSet
+	 * @param testSet
+	 * @param random
+	 *            true if the split is made with random indexes, false to use
+	 *            always the last X documents for the testset.
+	 */
 	public static <T> void datasetSplit(List<T> dataSet, double testsetRatio,
-			List<T> trainingSet, List<T> testSet) {
+			List<T> trainingSet, List<T> testSet, boolean random) {
 		int testSetSize = (int) Math.floor(dataSet.size() * testsetRatio);
 
 		// testSet.clear();
@@ -209,9 +261,17 @@ public class RocchioClassificationBenchmark {
 		List<T> tmpTrainingSet = new ArrayList<T>();
 		tmpTrainingSet.addAll(dataSet);
 
+		int index = 0;
 		Random r = new Random(System.currentTimeMillis());
 		for (int i = testSetSize; i > 0; i--) {
-			int index = r.nextInt(tmpTrainingSet.size());
+
+			if (random)
+				// Random index
+				index = r.nextInt(tmpTrainingSet.size());
+			else
+				// Last documents
+				index = tmpTrainingSet.size() - 1 - i;
+
 			testSet.add(tmpTrainingSet.get(index));
 			tmpTrainingSet.remove(index);
 		}
@@ -241,11 +301,19 @@ public class RocchioClassificationBenchmark {
 		return classes;
 	}
 
+	/**
+	 * Load documents from the given folder, extracting the category from the
+	 * name (i.e. filename = &lt;category&gt;_&lt;name&gt;.&lt;extension&gt;)
+	 * 
+	 * @param docDir
+	 * @param locale
+	 * @return
+	 * @throws Exception
+	 */
 	public static List<Document> loadDocs(File docDir, Locale locale)
 			throws Exception {
-		LOG.info(String.format(
-				"Loading docs from folder '%s' and language '%s'",
-				docDir.getAbsolutePath(), locale.getLanguage()));
+		LOG.info(String.format("Loading docs from folder '%s'",
+				docDir.getAbsolutePath()));
 
 		List<Document> documents = new ArrayList<Document>();
 
@@ -271,6 +339,14 @@ public class RocchioClassificationBenchmark {
 		return documents;
 	}
 
+	/**
+	 * Load documents from the given folder, expecting to find N subfolders, one
+	 * for each category.
+	 * 
+	 * @param docDir
+	 * @return
+	 * @throws Exception
+	 */
 	public static List<Document> loadDocsInSubdirs(File docDir)
 			throws Exception {
 		LOG.info(String.format("Loading docs from folder '%s'",

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -32,7 +33,7 @@ public class StopWordsTrimmer {
 	}
 
 	/**
-	 * Remove all chars except letters (replace with space).
+	 * Remove all chars except letters (replace with space) <b>in a text</b>.
 	 * 
 	 * @param text
 	 * @return
@@ -45,6 +46,19 @@ public class StopWordsTrimmer {
 	}
 
 	/**
+	 * Remove all chars except letters <b>in a word</b>.
+	 * 
+	 * @param text
+	 * @return
+	 */
+	public String normalizeWord(String text) {
+		if (language == Locale.ITALIAN)
+			return text.replaceAll("[^A-Za-zàèéìòù]", "");
+		else
+			return text.replaceAll("[^A-Za-z'\\-@.]", "");
+	}
+
+	/**
 	 * Split a sentence in words by spaces.
 	 * 
 	 * @param text
@@ -53,7 +67,7 @@ public class StopWordsTrimmer {
 	public static List<String> tokenize(String text) {
 		return Arrays.asList(text.split(" "));
 	}
-	
+
 	/**
 	 * Split a sentence in words by spaces, commas, apex.
 	 * 
@@ -71,7 +85,7 @@ public class StopWordsTrimmer {
 	 * @param stopwords
 	 * @return
 	 */
-	public static List<String> trim(List<String> words,
+	public static List<String> trim(Collection<String> words,
 			Map<String, String> stopWords) {
 		List<String> okWords = new ArrayList<String>();
 
@@ -91,7 +105,7 @@ public class StopWordsTrimmer {
 	 * @return
 	 * @throws FileNotFoundException
 	 */
-	public static List<String> trim(List<String> words, String datasetPath)
+	public static List<String> trim(Collection<String> words, String datasetPath)
 			throws FileNotFoundException {
 		Map<String, String> stopWords = loadStopWords(datasetPath);
 		return trim(words, stopWords);
@@ -105,7 +119,8 @@ public class StopWordsTrimmer {
 	 * @return
 	 * @throws FileNotFoundException
 	 */
-	public List<String> trim(List<String> words) throws FileNotFoundException {
+	public List<String> trim(Collection<String> words)
+			throws FileNotFoundException {
 		if (stopwords == null)
 			stopwords = loadStopWords(datasetPath);
 
