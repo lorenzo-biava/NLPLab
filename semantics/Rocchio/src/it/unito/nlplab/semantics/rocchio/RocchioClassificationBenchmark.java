@@ -13,6 +13,7 @@ import it.unito.nlplap.semantics.utils.Utils;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,8 +45,8 @@ public class RocchioClassificationBenchmark {
 
 	public static void main(String[] args) throws Exception {
 
-		boolean ita = false;
-		boolean useWSD = true;
+		boolean ita = true;
+		boolean useWSD = false;
 		boolean randomSplit = false;
 
 		String docDirPath;
@@ -85,6 +86,8 @@ public class RocchioClassificationBenchmark {
 		// Classify docs
 		int correctCount = 0;
 		int wrongCount = 0;
+		// Count errors by class
+		Map<String, Map<String, Integer>> errorsByClass = new HashMap<String, Map<String, Integer>>();
 		for (Document doc : testSet) {
 			ClassificationResult cr = rc.classify(rc
 					.computeDocumentFeatures(doc));
@@ -95,13 +98,50 @@ public class RocchioClassificationBenchmark {
 					cr.getBestScore()));
 			if (doc.getCategory().equals(cr.getBestClass()))
 				correctCount++;
-			else
+			else {
+				// Keep error count
 				wrongCount++;
+
+				Map<String, Integer> correctClassErrors = errorsByClass.get(doc
+						.getClassificationClass());
+				if (correctClassErrors == null) {
+					correctClassErrors = new HashMap<String, Integer>();
+					errorsByClass.put(doc.getClassificationClass(),
+							correctClassErrors);
+
+					// Initialize with all empty classes
+					for (String cls : datasetInClasses.keySet())
+						correctClassErrors.put(cls, 0);
+				}
+
+				// Increase error count
+				correctClassErrors.put(cr.getBestClass(),
+						correctClassErrors.get(cr.getBestClass()) + 1);
+			}
 		}
 
 		LOG.info(String.format(
 				"Total docs=%d, Correctly classified=%d, Badly classified=%d",
 				testSet.size(), correctCount, wrongCount));
+
+		LOG.info("Classification errors overview:");
+		// Print classification errors by class
+		for (Map.Entry<String, Map<String, Integer>> correctClass : errorsByClass
+				.entrySet()) {
+			String log = "";
+			int count = 0;
+			for (Map.Entry<String, Integer> wrongClass : correctClass
+					.getValue().entrySet()) {
+				log += String.format("\t[%s]:%d", wrongClass.getKey(),
+						wrongClass.getValue());
+				count += wrongClass.getValue();
+			}
+
+			log = String.format("Class [%s]\t(total:%d)\t:",
+					correctClass.getKey(), count)
+					+ log;
+			LOG.info(log);
+		}
 	}
 
 	/**
