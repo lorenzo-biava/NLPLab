@@ -290,8 +290,7 @@ public class WSD {
 			throws Exception {
 		int overlap = 0;
 
-		// Clean original word's context
-		// FIXME Oppure al contrario e senza ripetizioni !?
+		// Count words in common
 		for (String contextWord : context) {
 			if (sense.getContext().contains(contextWord))
 				overlap++;
