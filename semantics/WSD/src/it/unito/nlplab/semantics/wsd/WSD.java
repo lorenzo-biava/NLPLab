@@ -97,10 +97,10 @@ public class WSD {
 		if (cleaner == null) {
 			cleaner = new LemmatizingTextCleaner(language);
 		}
-		this.cleaner=cleaner;
+		this.cleaner = cleaner;
 
 	}
-	
+
 	public WSD(Locale language) throws FileNotFoundException {
 		this(language, null);
 	}
@@ -165,7 +165,7 @@ public class WSD {
 
 		if (LOG.isDebugEnabled())
 			LOG.debug(String
-					.format("Calculating best sense for word '%s' (originally '%s'), PoS '%s' and context '%s'",
+					.format("Calculating best sense for word '%s', PoS '%s' and context '%s'",
 							cleanWord, pos, cleanContext));
 
 		// Compute best sense
@@ -290,17 +290,21 @@ public class WSD {
 			throws Exception {
 		int overlap = 0;
 
+		List<String> commons = new ArrayList<String>();
 		// Count words in common
 		for (String contextWord : context) {
-			if (sense.getContext().contains(contextWord))
+			if (sense.getContext().contains(contextWord)) {
 				overlap++;
+				commons.add(contextWord);
+			}
 		}
 
 		if (LOG.isDebugEnabled())
-			LOG.debug(String.format(
-					"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
-					overlap, StringUtils.join(context, ", "),
-					StringUtils.join(sense.getContext(), ", ")));
+			LOG.debug(String
+					.format("Calculating Overlap: value=%d, commonWords=[%s], context=[%s], sense=[%s]",
+							overlap, StringUtils.join(commons, ", "),
+							StringUtils.join(context, ", "),
+							StringUtils.join(sense.getContext(), ", ")));
 
 		return overlap;
 	}

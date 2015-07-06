@@ -180,10 +180,6 @@ public class ExtendedWSD {
 		Sense s = new Sense();
 		s.setContext(senseWords);
 		overlap = WSD.getOverlap(s, contextLemmas);
-		LOG.info(String.format(
-				"Calculating Overlap: value=%d, context=[%s], sense=[%s]",
-				overlap, StringUtils.join(contextLemmas, ", "),
-				StringUtils.join(senseWords, ", ")));
 
 		return overlap;
 	}
